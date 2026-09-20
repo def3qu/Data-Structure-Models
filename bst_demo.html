@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSC 2180 — Binary Search Tree Demo</title>
+<style>
+  :root{
+    --navy:#0f2545;
+    --navy-2:#16335e;
+    --navy-3:#1e4278;
+    --accent:#ff8c42;
+    --accent-2:#4fd1c5;
+    --bg:#0b1626;
+    --panel:#0f1e34;
+    --panel-2:#132844;
+    --text:#e8eef6;
+    --text-dim:#9db0c9;
+    --border:#26456f;
+    --good:#4fd18a;
+    --bad:#ff6b6b;
+    --mono: "Consolas","Menlo","Monaco",monospace;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+  }
+  header{
+    background:linear-gradient(90deg,var(--navy) 0%,var(--navy-3) 100%);
+    padding:14px 20px;
+    padding-top: calc(14px + env(safe-area-inset-top,0px));
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:2px solid var(--accent);
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  header h1{
+    font-size:1.25rem;
+    margin:0;
+    letter-spacing:0.3px;
+  }
+  header h1 span{color:var(--accent);}
+  header .badge{
+    font-size:0.75rem;
+    color:var(--text-dim);
+    background:rgba(255,255,255,0.06);
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+  }
+  main{
+    flex:1;
+    display:grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap:14px;
+    padding:14px;
+    max-width:1500px;
+    margin:0 auto;
+    width:100%;
+  }
+  @media (max-width: 980px){
+    main{grid-template-columns:1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .panel-title{
+    background:var(--panel-2);
+    padding:8px 14px;
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--text-dim);
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  #treeWrap{
+    flex:1;
+    min-height:340px;
+    overflow:auto;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:10px;
+  }
+  svg{overflow:visible;}
+  .node-circle{
+    fill:var(--navy-3);
+    stroke:var(--accent-2);
+    stroke-width:2;
+    transition:fill 0.25s, stroke 0.25s, r 0.2s;
+  }
+  .node-circle.active{fill:var(--accent);stroke:var(--accent);}
+  .node-circle.visited{stroke:var(--accent-2);fill:#1c3a63;}
+  .node-circle.found{fill:var(--good);stroke:var(--good);}
+  .node-circle.removed{fill:var(--bad);stroke:var(--bad);}
+  .node-label{
+    fill:var(--text);
+    font-size:14px;
+    font-weight:600;
+    text-anchor:middle;
+    dominant-baseline:central;
+    font-family:var(--mono);
+    pointer-events:none;
+  }
+  .edge{
+    stroke:var(--border);
+    stroke-width:2;
+  }
+  .edge.active{stroke:var(--accent);stroke-width:3;}
+
+  .controls{
+    padding:12px 14px;
+    border-top:1px solid var(--border);
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    background:var(--panel-2);
+  }
+  .controls input[type=number]{
+    width:80px;
+    padding:7px 8px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+  }
+  button{
+    background:var(--navy-3);
+    color:var(--text);
+    border:1px solid var(--border);
+    padding:7px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:0.85rem;
+    transition:background 0.15s, transform 0.1s;
+    white-space:nowrap;
+  }
+  button:hover{background:#25538f;}
+  button:active{transform:scale(0.96);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#20140a;font-weight:700;}
+  button.primary:hover{background:#ffa15e;}
+  button.ghost{background:transparent;}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
+  .speed-row{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-dim);}
+  .speed-row input[type=range]{width:90px;}
+
+  #codePanel{flex:1;overflow:auto;}
+  pre#codeBlock{
+    margin:0;
+    padding:14px 16px;
+    font-family:var(--mono);
+    font-size:0.83rem;
+    line-height:1.55;
+    color:#c9d6e8;
+    white-space:pre;
+  }
+  .code-line{display:block;padding:1px 8px;border-radius:4px;}
+  .code-line.hl{background:rgba(255,140,66,0.22);border-left:3px solid var(--accent);padding-left:5px;}
+  .kw{color:#6cb6ff;}
+  .ty{color:#4fd1c5;}
+  .cm{color:#6d84a3;font-style:italic;}
+  .fn{color:#ffd479;}
+
+  select#funcSelect{
+    background:var(--bg);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:5px 8px;
+    font-family:var(--mono);
+    font-size:0.78rem;
+  }
+
+  #logPanel{max-height:220px;}
+  #log{
+    flex:1;
+    overflow-y:auto;
+    padding:10px 14px;
+    font-family:var(--mono);
+    font-size:0.8rem;
+    color:var(--text-dim);
+  }
+  #log div{padding:2px 0;border-bottom:1px dashed rgba(255,255,255,0.05);}
+  #log div.step{color:var(--accent-2);}
+  #log div.result{color:var(--good);font-weight:600;}
+  #log div.err{color:var(--bad);}
+
+  #statsRow{
+    display:flex;
+    gap:16px;
+    padding:8px 14px;
+    background:var(--panel-2);
+    border-top:1px solid var(--border);
+    font-size:0.78rem;
+    color:var(--text-dim);
+    flex-wrap:wrap;
+  }
+  #statsRow b{color:var(--text);}
+  .col-right{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>CSC 2180 <span>&middot;</span> Binary Search Tree <span>Demo</span></h1>
+  <div class="badge">Data Structures — Fall 2026</div>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="panel-title">
+      <span>Tree Visualization</span>
+      <span id="sizeTag">n = 0</span>
+    </div>
+    <div id="treeWrap">
+      <svg id="svg" width="100%" height="420" viewBox="0 0 900 420" preserveAspectRatio="xMidYMin meet"></svg>
+    </div>
+    <div id="statsRow">
+      <div>Height: <b id="statHeight">—</b></div>
+      <div>Min: <b id="statMin">—</b></div>
+      <div>Max: <b id="statMax">—</b></div>
+      <div>Balanced: <b id="statBalanced">—</b></div>
+    </div>
+    <div class="controls">
+      <div class="row">
+        <input type="number" id="valInput" placeholder="value" />
+        <button class="primary" id="btnInsert">Insert</button>
+        <button id="btnDelete">Delete</button>
+        <button id="btnSearch">Search</button>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button id="btnInorder">Inorder</button>
+        <button id="btnPreorder">Preorder</button>
+        <button id="btnPostorder">Postorder</button>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button id="btnMin">Find Min</button>
+        <button id="btnMax">Find Max</button>
+        <button id="btnHeight">Height</button>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button class="ghost" id="btnRandom">Random Tree</button>
+        <button class="ghost" id="btnClear">Clear</button>
+      </div>
+      <div class="speed-row">
+        <label for="speed">Speed</label>
+        <input type="range" id="speed" min="150" max="1200" step="50" value="550">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-right">
+    <div class="panel" style="height:340px;">
+      <div class="panel-title">
+        <span>Live C++ Code</span>
+        <select id="funcSelect">
+          <option value="insert">insert()</option>
+          <option value="remove">remove() / findMin</option>
+          <option value="search">search()</option>
+          <option value="inorder">inorder()</option>
+          <option value="preorder">preorder()</option>
+          <option value="postorder">postorder()</option>
+          <option value="height">height()</option>
+        </select>
+      </div>
+      <div id="codePanel"><pre id="codeBlock"></pre></div>
+    </div>
+
+    <div class="panel" id="logPanel">
+      <div class="panel-title"><span>Operation Log</span>
+        <button class="ghost" id="btnClearLog" style="padding:3px 8px;font-size:0.72rem;">clear</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------------- BST model ---------------- */
+class Node{
+  constructor(val){ this.val=val; this.left=null; this.right=null; this.x=0; this.y=0; }
+}
+let root=null;
+let animSpeed=550;
+
+function insertNode(node,val){
+  if(node===null) return new Node(val);
+  if(val<node.val) node.left=insertNode(node.left,val);
+  else if(val>node.val) node.right=insertNode(node.right,val);
+  return node;
+}
+function findMinNode(node){
+  while(node.left!==null) node=node.left;
+  return node;
+}
+function removeNode(node,val){
+  if(node===null) return null;
+  if(val<node.val){ node.left=removeNode(node.left,val); return node; }
+  if(val>node.val){ node.right=removeNode(node.right,val); return node; }
+  // found it
+  if(node.left===null) return node.right;
+  if(node.right===null) return node.left;
+  const succ=findMinNode(node.right);
+  node.val=succ.val;
+  node.right=removeNode(node.right,succ.val);
+  return node;
+}
+function heightOf(node){
+  if(node===null) return -1;
+  return 1+Math.max(heightOf(node.left),heightOf(node.right));
+}
+function countNodes(node){
+  if(node===null) return 0;
+  return 1+countNodes(node.left)+countNodes(node.right);
+}
+function isBalanced(node){
+  if(node===null) return true;
+  const lh=heightOf(node.left), rh=heightOf(node.right);
+  return Math.abs(lh-rh)<=1 && isBalanced(node.left) && isBalanced(node.right);
+}
+
+/* ---------------- Logging ---------------- */
+const logEl=document.getElementById('log');
+function log(msg,cls){
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=msg;
+  logEl.appendChild(d);
+  logEl.scrollTop=logEl.scrollHeight;
+}
+document.getElementById('btnClearLog').onclick=()=>{ logEl.innerHTML=''; };
+
+/* ---------------- Code panel ---------------- */
+const CODE = {
+insert:
+[["template<typename T>",0],
+ ["Node<T>* insert(Node<T>* node, T val) {",0],
+ ["    if (node == nullptr)",1],
+ ["        return new Node<T>(val);",2],
+ ["",0],
+ ["    if (val < node->data)",1],
+ ["        node->left = insert(node->left, val);",2],
+ ["    else if (val > node->data)",1],
+ ["        node->right = insert(node->right, val);",2],
+ ["    // duplicate values are ignored",1],
+ ["",0],
+ ["    return node;",1],
+ ["}",0]],
+remove:
+[["template<typename T>",0],
+ ["Node<T>* findMin(Node<T>* node) {",0],
+ ["    while (node->left != nullptr)",1],
+ ["        node = node->left;",2],
+ ["    return node;",1],
+ ["}",0],
+ ["",0],
+ ["template<typename T>",0],
+ ["Node<T>* remove(Node<T>* node, T val) {",0],
+ ["    if (node == nullptr) return nullptr;",1],
+ ["",0],
+ ["    if (val < node->data)",1],
+ ["        node->left = remove(node->left, val);",2],
+ ["    else if (val > node->data)",1],
+ ["        node->right = remove(node->right, val);",2],
+ ["    else {",1],
+ ["        if (node->left == nullptr) {",2],
+ ["            Node<T>* r = node->right;",3],
+ ["            delete node;",3],
+ ["            return r;",3],
+ ["        }",2],
+ ["        if (node->right == nullptr) {",2],
+ ["            Node<T>* l = node->left;",3],
+ ["            delete node;",3],
+ ["            return l;",3],
+ ["        }",2],
+ ["        Node<T>* succ = findMin(node->right);",2],
+ ["        node->data = succ->data;",2],
+ ["        node->right = remove(node->right, succ->data);",2],
+ ["    }",1],
+ ["    return node;",1],
+ ["}",0]],
+search:
+[["template<typename T>",0],
+ ["bool search(Node<T>* node, T val) {",0],
+ ["    if (node == nullptr)",1],
+ ["        return false;",2],
+ ["    if (val == node->data)",1],
+ ["        return true;",2],
+ ["    if (val < node->data)",1],
+ ["        return search(node->left, val);",2],
+ ["    return search(node->right, val);",1],
+ ["}",0]],
+inorder:
+[["template<typename T>",0],
+ ["void inorder(Node<T>* node) {",0],
+ ["    if (node == nullptr) return;",1],
+ ["    inorder(node->left);",1],
+ ["    std::cout << node->data << \" \";",1],
+ ["    inorder(node->right);",1],
+ ["}",0]],
+preorder:
+[["template<typename T>",0],
+ ["void preorder(Node<T>* node) {",0],
+ ["    if (node == nullptr) return;",1],
+ ["    std::cout << node->data << \" \";",1],
+ ["    preorder(node->left);",1],
+ ["    preorder(node->right);",1],
+ ["}",0]],
+postorder:
+[["template<typename T>",0],
+ ["void postorder(Node<T>* node) {",0],
+ ["    if (node == nullptr) return;",1],
+ ["    postorder(node->left);",1],
+ ["    postorder(node->right);",1],
+ ["    std::cout << node->data << \" \";",1],
+ ["}",0]],
+height:
+[["template<typename T>",0],
+ ["int height(Node<T>* node) {",0],
+ ["    if (node == nullptr) return -1;",1],
+ ["    return 1 + std::max(height(node->left),",1],
+ ["                         height(node->right));",2],
+ ["}",0]],
+};
+
+function highlightSyntax(line){
+  let s=line
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s=s.replace(/\/\/.*$/,m=>`<span class="cm">${m}</span>`);
+  s=s.replace(/\b(template|typename|if|else|while|return|new|delete|nullptr|void|bool)\b/g,'<span class="kw">$1</span>');
+  s=s.replace(/\b(Node|int|T|std)\b/g,'<span class="ty">$1</span>');
+  s=s.replace(/\b(insert|remove|findMin|search|inorder|preorder|postorder|height|max)\b(?=\()/g,'<span class="fn">$1</span>');
+  return s;
+}
+
+let currentFunc='insert';
+function renderCode(highlightIdx){
+  const lines=CODE[currentFunc];
+  const codeBlock=document.getElementById('codeBlock');
+  codeBlock.innerHTML=lines.map((pair,i)=>{
+    const [text]=pair;
+    const cls = (highlightIdx!==undefined && highlightIdx===i)?'code-line hl':'code-line';
+    return `<span class="${cls}">${highlightSyntax(text) || '&nbsp;'}</span>`;
+  }).join('\n');
+}
+document.getElementById('funcSelect').onchange=(e)=>{
+  currentFunc=e.target.value;
+  renderCode();
+};
+renderCode();
+
+// helper: find code line index by "depth marker" matching recursion depth semantics is tricky;
+// instead we hand-map operation phases -> line indices for cleaner sync.
+const LINE_MAP = {
+  insert: {base:1, less:5, greater:7, newnode:3},
+  search: {base:1, hit:4, less:6, greater:7},
+  remove: {base:8, less:11, greater:13, foundNoLeft:16, foundNoRight:21, succ:26},
+  inorder: {base:1, left:2, visit:3, right:4},
+  preorder: {base:1, visit:2, left:3, right:4},
+  postorder: {base:1, left:2, right:3, visit:4},
+  height: {base:1, base2:2, recurse:3}
+};
+
+/* ---------------- Layout & render ---------------- */
+const svg=document.getElementById('svg');
+const NS='http://www.w3.org/2000/svg';
+
+function layout(){
+  // compute x via inorder index, y via depth
+  let counter=0;
+  const nodesInOrder=[];
+  function assign(node,depth){
+    if(node===null) return;
+    assign(node.left,depth+1);
+    node.x = counter++;
+    node.y = depth;
+    nodesInOrder.push(node);
+    assign(node.right,depth+1);
+  }
+  assign(root,0);
+  const n=countNodes(root);
+  const width = Math.max(760, n*70);
+  const spacing = n>0 ? width/(n+1) : 0;
+  nodesInOrder.forEach(node=>{
+    node.px = (node.x+1)*spacing;
+    node.py = 50 + node.y*70;
+  });
+  svg.setAttribute('viewBox',`0 0 ${width} ${Math.max(420, (heightOf(root)+2)*70)}`);
+}
+
+function draw(highlight={}){
+  layout();
+  svg.innerHTML='';
+  // edges first
+  function drawEdges(node){
+    if(node===null) return;
+    if(node.left){
+      const activeEdge = highlight.edge && highlight.edge===node.left;
+      const line=document.createElementNS(NS,'line');
+      line.setAttribute('x1',node.px); line.setAttribute('y1',node.py);
+      line.setAttribute('x2',node.left.px); line.setAttribute('y2',node.left.py);
+      line.setAttribute('class','edge'+(activeEdge?' active':''));
+      svg.appendChild(line);
+      drawEdges(node.left);
+    }
+    if(node.right){
+      const activeEdge = highlight.edge && highlight.edge===node.right;
+      const line=document.createElementNS(NS,'line');
+      line.setAttribute('x1',node.px); line.setAttribute('y1',node.py);
+      line.setAttribute('x2',node.right.px); line.setAttribute('y2',node.right.py);
+      line.setAttribute('class','edge'+(activeEdge?' active':''));
+      svg.appendChild(line);
+      drawEdges(node.right);
+    }
+  }
+  drawEdges(root);
+  // nodes
+  function drawNodes(node){
+    if(node===null) return;
+    drawNodes(node.left);
+    const g=document.createElementNS(NS,'g');
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',node.px); c.setAttribute('cy',node.py); c.setAttribute('r',20);
+    let cls='node-circle';
+    if(highlight.visited && highlight.visited.includes(node)) cls+=' visited';
+    if(highlight.active===node) cls+=' active';
+    if(highlight.found===node) cls+=' found';
+    if(highlight.removed===node) cls+=' removed';
+    c.setAttribute('class',cls);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',node.px); t.setAttribute('y',node.py);
+    t.setAttribute('class','node-label');
+    t.textContent=node.val;
+    g.appendChild(c); g.appendChild(t);
+    svg.appendChild(g);
+    drawNodes(node.right);
+  }
+  drawNodes(root);
+  document.getElementById('sizeTag').textContent=`n = ${countNodes(root)}`;
+  updateStats();
+}
+function updateStats(){
+  document.getElementById('statHeight').textContent = root? heightOf(root): '—';
+  document.getElementById('statMin').textContent = root? findMinNode(root).val : '—';
+  let mx=root; if(mx){ while(mx.right) mx=mx.right; }
+  document.getElementById('statMax').textContent = mx? mx.val : '—';
+  document.getElementById('statBalanced').textContent = root? (isBalanced(root)?'yes':'no') : '—';
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function getSpeed(){ return Number(document.getElementById('speed').value); }
+
+/* ---------------- Animated operations ---------------- */
+let busy=false;
+function setBusy(b){
+  busy=b;
+  document.querySelectorAll('button').forEach(btn=>btn.disabled=b);
+}
+
+async function animatedInsert(val){
+  setBusy(true);
+  currentFunc='insert'; document.getElementById('funcSelect').value='insert';
+  log(`insert(${val})`,'step');
+  const visited=[];
+  let cur=root;
+  renderCode(LINE_MAP.insert.base);
+  while(cur){
+    visited.push(cur);
+    draw({visited, active:cur});
+    await sleep(getSpeed());
+    if(val<cur.val){
+      renderCode(LINE_MAP.insert.less);
+      log(`  ${val} < ${cur.val} → go left`);
+      if(!cur.left){ renderCode(LINE_MAP.insert.newnode); break; }
+      cur=cur.left;
+    } else if(val>cur.val){
+      renderCode(LINE_MAP.insert.greater);
+      log(`  ${val} > ${cur.val} → go right`);
+      if(!cur.right){ renderCode(LINE_MAP.insert.newnode); break; }
+      cur=cur.right;
+    } else {
+      log(`  ${val} already in tree — no duplicate inserted`,'err');
+      draw({visited});
+      setBusy(false);
+      return;
+    }
+  }
+  root=insertNode(root,val);
+  draw({visited});
+  log(`  inserted ${val}`,'result');
+  setBusy(false);
+}
+
+async function animatedSearch(val){
+  setBusy(true);
+  currentFunc='search'; document.getElementById('funcSelect').value='search';
+  log(`search(${val})`,'step');
+  const visited=[];
+  let cur=root;
+  renderCode(LINE_MAP.search.base);
+  while(cur){
+    visited.push(cur);
+    draw({visited, active:cur});
+    await sleep(getSpeed());
+    if(val===cur.val){
+      renderCode(LINE_MAP.search.hit);
+      draw({visited, found:cur});
+      log(`  found ${val}`,'result');
+      setBusy(false);
+      return;
+    } else if(val<cur.val){
+      renderCode(LINE_MAP.search.less);
+      cur=cur.left;
+    } else {
+      renderCode(LINE_MAP.search.greater);
+      cur=cur.right;
+    }
+  }
+  draw({visited});
+  log(`  ${val} not found`,'err');
+  setBusy(false);
+}
+
+async function animatedDelete(val){
+  setBusy(true);
+  currentFunc='remove'; document.getElementById('funcSelect').value='remove';
+  log(`remove(${val})`,'step');
+  const visited=[];
+  let cur=root, found=false;
+  renderCode(LINE_MAP.remove.base);
+  while(cur){
+    visited.push(cur);
+    draw({visited, active:cur});
+    await sleep(getSpeed());
+    if(val<cur.val){ renderCode(LINE_MAP.remove.less); cur=cur.left; }
+    else if(val>cur.val){ renderCode(LINE_MAP.remove.greater); cur=cur.right; }
+    else { found=true; break; }
+  }
+  if(!found){
+    log(`  ${val} not in tree`,'err');
+    draw({visited});
+    setBusy(false);
+    return;
+  }
+  draw({visited, removed:cur});
+  if(cur.left && cur.right){
+    renderCode(LINE_MAP.remove.succ);
+    const succ=findMinNode(cur.right);
+    log(`  two children — replacing with inorder successor ${succ.val}`);
+    await sleep(getSpeed());
+  } else if(!cur.left){
+    renderCode(LINE_MAP.remove.foundNoLeft);
+    log(`  no left child — splice in right subtree`);
+    await sleep(getSpeed());
+  } else {
+    renderCode(LINE_MAP.remove.foundNoRight);
+    log(`  no right child — splice in left subtree`);
+    await sleep(getSpeed());
+  }
+  root=removeNode(root,val);
+  draw();
+  log(`  removed ${val}`,'result');
+  setBusy(false);
+}
+
+async function animatedTraversal(kind){
+  setBusy(true);
+  currentFunc=kind; document.getElementById('funcSelect').value=kind;
+  log(`${kind}(root)`,'step');
+  const order=[];
+  const map=LINE_MAP[kind];
+  async function visit(node){
+    if(node===null){ renderCode(map.base); return; }
+    if(kind==='preorder'){
+      renderCode(map.visit); order.push(node.val); draw({visited:order.slice(), active:node}); await sleep(getSpeed());
+      renderCode(map.left); await visit(node.left);
+      renderCode(map.right); await visit(node.right);
+    } else if(kind==='inorder'){
+      renderCode(map.left); await visit(node.left);
+      renderCode(map.visit); order.push(node.val); draw({visited:order.slice(), active:node}); await sleep(getSpeed());
+      renderCode(map.right); await visit(node.right);
+    } else {
+      renderCode(map.left); await visit(node.left);
+      renderCode(map.right); await visit(node.right);
+      renderCode(map.visit); order.push(node.val); draw({visited:order.slice(), active:node}); await sleep(getSpeed());
+    }
+  }
+  await visit(root);
+  log(`  order: [${order.join(', ')}]`,'result');
+  draw({visited:order});
+  setBusy(false);
+}
+
+async function animatedHeight(){
+  setBusy(true);
+  currentFunc='height'; document.getElementById('funcSelect').value='height';
+  renderCode(LINE_MAP.height.base);
+  await sleep(getSpeed()/2);
+  const h=heightOf(root);
+  log(`height(root) = ${h}`,'result');
+  setBusy(false);
+}
+
+async function animatedMin(){
+  setBusy(true);
+  if(!root){ log('tree is empty','err'); setBusy(false); return; }
+  const visited=[]; let cur=root;
+  while(cur){ visited.push(cur); draw({visited, active:cur}); await sleep(getSpeed()/1.5); cur=cur.left; }
+  log(`min = ${visited[visited.length-1].val}`,'result');
+  draw({visited, found:visited[visited.length-1]});
+  setBusy(false);
+}
+async function animatedMax(){
+  setBusy(true);
+  if(!root){ log('tree is empty','err'); setBusy(false); return; }
+  const visited=[]; let cur=root;
+  while(cur){ visited.push(cur); draw({visited, active:cur}); await sleep(getSpeed()/1.5); cur=cur.right; }
+  log(`max = ${visited[visited.length-1].val}`,'result');
+  draw({visited, found:visited[visited.length-1]});
+  setBusy(false);
+}
+
+/* ---------------- Wiring ---------------- */
+function getVal(){
+  const v=document.getElementById('valInput').value.trim();
+  if(v==='') { log('enter a value first','err'); return null; }
+  const n=Number(v);
+  if(!Number.isFinite(n)){ log('value must be numeric','err'); return null; }
+  return Math.trunc(n);
+}
+document.getElementById('btnInsert').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) animatedInsert(v); };
+document.getElementById('btnDelete').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) animatedDelete(v); };
+document.getElementById('btnSearch').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) animatedSearch(v); };
+document.getElementById('btnInorder').onclick=()=>{ if(!busy) animatedTraversal('inorder'); };
+document.getElementById('btnPreorder').onclick=()=>{ if(!busy) animatedTraversal('preorder'); };
+document.getElementById('btnPostorder').onclick=()=>{ if(!busy) animatedTraversal('postorder'); };
+document.getElementById('btnMin').onclick=()=>{ if(!busy) animatedMin(); };
+document.getElementById('btnMax').onclick=()=>{ if(!busy) animatedMax(); };
+document.getElementById('btnHeight').onclick=()=>{ if(!busy) animatedHeight(); };
+document.getElementById('btnClear').onclick=()=>{
+  if(busy) return;
+  root=null; draw(); log('tree cleared');
+};
+document.getElementById('btnRandom').onclick=()=>{
+  if(busy) return;
+  root=null;
+  const vals=new Set();
+  while(vals.size<9) vals.add(Math.floor(Math.random()*90)+10);
+  vals.forEach(v=> root=insertNode(root,v));
+  draw();
+  log(`generated random tree: [${[...vals].join(', ')}]`,'result');
+};
+document.getElementById('valInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ document.getElementById('btnInsert').click(); }
+});
+
+// initial demo tree
+[50,30,70,20,40,60,80,35,65].forEach(v=> root=insertNode(root,v));
+draw();
+log('Demo tree loaded. Try insert, delete, search, or a traversal.');
+</script>
+</body>
+</html>
