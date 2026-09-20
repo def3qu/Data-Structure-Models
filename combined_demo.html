@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSC 2180 — Linear Structures Demo</title>
+<style>
+  :root{
+    --navy:#0f2545; --navy-2:#16335e; --navy-3:#1e4278;
+    --accent:#ff8c42; --accent-2:#4fd1c5;
+    --bg:#0b1626; --panel:#0f1e34; --panel-2:#132844;
+    --text:#e8eef6; --text-dim:#9db0c9; --border:#26456f;
+    --good:#4fd18a; --bad:#ff6b6b;
+    --mono:"Consolas","Menlo","Monaco",monospace;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    display:flex;flex-direction:column;min-height:100%;}
+  header{
+    background:linear-gradient(90deg,var(--navy) 0%,var(--navy-3) 100%);
+    padding:14px 20px; padding-top:calc(14px + env(safe-area-inset-top,0px));
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:2px solid var(--accent); flex-wrap:wrap; gap:8px;
+  }
+  header h1{font-size:1.2rem;margin:0;letter-spacing:0.3px;}
+  header h1 span{color:var(--accent);}
+  header .badge{font-size:0.75rem;color:var(--text-dim);background:rgba(255,255,255,0.06);
+    padding:4px 10px;border-radius:999px;border:1px solid var(--border);}
+
+  nav#tabs{
+    display:flex; gap:4px; padding:10px 14px 0 14px; background:var(--bg);
+    border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  nav#tabs button{
+    background:var(--panel); color:var(--text-dim); border:1px solid var(--border);
+    border-bottom:none; padding:9px 16px; border-radius:8px 8px 0 0; cursor:pointer;
+    font-size:0.85rem; font-weight:600;
+  }
+  nav#tabs button.active{background:var(--panel-2); color:var(--accent); border-color:var(--accent);}
+  nav#tabs button:hover:not(.active){color:var(--text);}
+
+  main{flex:1; display:grid; grid-template-columns:1.4fr 1fr; gap:14px; padding:14px;
+    max-width:1500px; margin:0 auto; width:100%;}
+  @media (max-width:980px){ main{grid-template-columns:1fr;} }
+
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    display:flex; flex-direction:column; overflow:hidden;}
+  .panel-title{background:var(--panel-2); padding:8px 14px; font-size:0.78rem;
+    text-transform:uppercase; letter-spacing:1px; color:var(--text-dim);
+    border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+
+  #vizWrap{flex:1; min-height:300px; overflow:auto; display:flex; align-items:center;
+    justify-content:center; padding:16px;}
+  svg{overflow:visible;}
+
+  .slot-rect{fill:var(--navy-3); stroke:var(--border); stroke-width:2; transition:fill 0.2s, stroke 0.2s;}
+  .slot-rect.filled{fill:#1c3a63; stroke:var(--accent-2);}
+  .slot-rect.active{fill:var(--accent); stroke:var(--accent);}
+  .slot-rect.empty-active{fill:var(--navy-2); stroke:var(--accent); stroke-dasharray:4 3;}
+  .slot-label{fill:var(--text); font-size:14px; font-weight:600; text-anchor:middle;
+    dominant-baseline:central; font-family:var(--mono); pointer-events:none;}
+  .ptr-label{fill:var(--accent); font-size:12px; font-weight:700; text-anchor:middle; font-family:var(--mono);}
+  .node-circle{fill:var(--navy-3); stroke:var(--accent-2); stroke-width:2; transition:fill 0.2s;}
+  .node-circle.active{fill:var(--accent); stroke:var(--accent);}
+  .node-circle.removed{fill:var(--bad); stroke:var(--bad);}
+  .edge{stroke:var(--border); stroke-width:2; marker-end:url(#arrow);}
+  .edge.active{stroke:var(--accent); stroke-width:3;}
+  .ptr-tag{fill:var(--accent); font-size:11px; font-weight:700; text-anchor:middle; font-family:var(--mono);}
+  .null-box{fill:none; stroke:var(--border); stroke-width:1.5; stroke-dasharray:3 3;}
+
+  .controls{padding:12px 14px; border-top:1px solid var(--border); display:flex;
+    flex-wrap:wrap; gap:8px; align-items:center; background:var(--panel-2);}
+  .controls input[type=number]{width:80px; padding:7px 8px; border-radius:6px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); font-family:var(--mono);}
+  button.op{background:var(--navy-3); color:var(--text); border:1px solid var(--border);
+    padding:7px 12px; border-radius:6px; cursor:pointer; font-size:0.85rem; white-space:nowrap;}
+  button.op:hover{background:#25538f;}
+  button.op:active{transform:scale(0.96);}
+  button.op.primary{background:var(--accent); border-color:var(--accent); color:#20140a; font-weight:700;}
+  button.op.primary:hover{background:#ffa15e;}
+  button.op.ghost{background:transparent;}
+  button.op:disabled{opacity:0.4; cursor:not-allowed;}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .sep{width:1px; align-self:stretch; background:var(--border); margin:0 4px;}
+  .speed-row{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-dim);}
+  .speed-row input[type=range]{width:90px;}
+
+  #codePanel{flex:1; overflow:auto;}
+  pre#codeBlock{margin:0; padding:14px 16px; font-family:var(--mono); font-size:0.83rem;
+    line-height:1.55; color:#c9d6e8; white-space:pre;}
+  .code-line{display:block; padding:1px 8px; border-radius:4px;}
+  .code-line.hl{background:rgba(255,140,66,0.22); border-left:3px solid var(--accent); padding-left:5px;}
+  .kw{color:#6cb6ff;} .ty{color:#4fd1c5;} .cm{color:#6d84a3; font-style:italic;} .fn{color:#ffd479;}
+
+  #logPanel{max-height:220px;}
+  #log{flex:1; overflow-y:auto; padding:10px 14px; font-family:var(--mono); font-size:0.8rem; color:var(--text-dim);}
+  #log div{padding:2px 0; border-bottom:1px dashed rgba(255,255,255,0.05);}
+  #log div.step{color:var(--accent-2);}
+  #log div.result{color:var(--good); font-weight:600;}
+  #log div.err{color:var(--bad);}
+
+  #statsRow{display:flex; gap:16px; padding:8px 14px; background:var(--panel-2);
+    border-top:1px solid var(--border); font-size:0.78rem; color:var(--text-dim); flex-wrap:wrap;}
+  #statsRow b{color:var(--text);}
+  .col-right{display:flex; flex-direction:column; gap:14px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:contents;}
+</style>
+</head>
+<body>
+<header>
+  <h1>CSC 2180 <span>&middot;</span> Linear Structures <span>Demo</span></h1>
+  <div class="badge">Data Structures — Fall 2026</div>
+</header>
+
+<nav id="tabs">
+  <button class="tabbtn active" data-tab="astack">Array Stack</button>
+  <button class="tabbtn" data-tab="cqueue">Circular Queue</button>
+  <button class="tabbtn" data-tab="lstack">Linked-List Stack</button>
+  <button class="tabbtn" data-tab="lqueue">Linked-List Queue</button>
+</nav>
+
+<main id="main">
+  <!-- panels injected by JS per structure, sharing one code+log column -->
+  <div class="panel">
+    <div class="panel-title"><span id="vizTitle">Array Stack Visualization</span><span id="sizeTag">n = 0</span></div>
+    <div id="vizWrap"><svg id="svg" width="100%" height="360" viewBox="0 0 900 360" preserveAspectRatio="xMidYMin meet">
+      <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="#26456f"/></marker></defs>
+    </svg></div>
+    <div id="statsRow"></div>
+    <div class="controls" id="controls"></div>
+  </div>
+
+  <div class="col-right">
+    <div class="panel" style="height:340px;">
+      <div class="panel-title"><span>Live C++ Code</span><span id="fnTag" style="font-family:var(--mono);font-size:0.78rem;color:var(--text-dim);"></span></div>
+      <div id="codePanel"><pre id="codeBlock"></pre></div>
+    </div>
+    <div class="panel" id="logPanel">
+      <div class="panel-title"><span>Operation Log</span>
+        <button class="op ghost" id="btnClearLog" style="padding:3px 8px;font-size:0.72rem;">clear</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ============ shared helpers ============ */
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('svg');
+const logEl=document.getElementById('log');
+function log(msg,cls){
+  const d=document.createElement('div'); if(cls) d.className=cls; d.textContent=msg;
+  logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight;
+}
+document.getElementById('btnClearLog').onclick=()=>{ logEl.innerHTML=''; };
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function highlightSyntax(line){
+  let s=line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s=s.replace(/\/\/.*$/,m=>`<span class="cm">${m}</span>`);
+  s=s.replace(/\b(class|struct|template|typename|if|else|while|for|return|new|delete|nullptr|void|bool|throw|public|private)\b/g,'<span class="kw">$1</span>');
+  s=s.replace(/\b(Node|int|T|std|Stack|Queue|runtime_error)\b/g,'<span class="ty">$1</span>');
+  s=s.replace(/\b(push|pop|top|front|back|enqueue|dequeue|isEmpty|isFull)\b(?=\()/g,'<span class="fn">$1</span>');
+  return s;
+}
+function renderCode(lines,highlightIdx){
+  const codeBlock=document.getElementById('codeBlock');
+  codeBlock.innerHTML=lines.map((text,i)=>{
+    const cls=(highlightIdx!==undefined && highlightIdx===i)?'code-line hl':'code-line';
+    return `<span class="${cls}">${highlightSyntax(text)||'&nbsp;'}</span>`;
+  }).join('\n');
+}
+let busy=false;
+function setBusy(b){ busy=b; document.querySelectorAll('button').forEach(btn=>btn.disabled=b); }
+let animSpeedVal=550;
+function getSpeed(){ return animSpeedVal; }
+
+function speedControlHTML(){
+  return `<div class="speed-row"><label>Speed</label><input type="range" id="speed" min="150" max="1200" step="50" value="550"></div>`;
+}
+function wireSpeed(){
+  const s=document.getElementById('speed');
+  if(s) s.oninput=(e)=>{ animSpeedVal=Number(e.target.value); };
+}
+
+/* ============ structure implementations ============ */
+
+/* ---- Array Stack ---- */
+const CAP=8;
+let arrStack=[];
+const CODE_ASTACK=[
+"class ArrayStack {",
+"    T data[CAPACITY];",
+"    int topIdx = -1;",
+"public:",
+"    void push(T val) {",
+"        if (topIdx == CAPACITY - 1)",
+"            throw std::runtime_error(\"stack overflow\");",
+"        data[++topIdx] = val;",
+"    }",
+"    T pop() {",
+"        if (topIdx == -1)",
+"            throw std::runtime_error(\"stack underflow\");",
+"        return data[topIdx--];",
+"    }",
+"    T top() { return data[topIdx]; }",
+"    bool isEmpty() { return topIdx == -1; }",
+"};"
+];
+function drawArrStack(highlightIdx){
+  svg.innerHTML=svg.querySelector('defs').outerHTML;
+  const w=80,gap=8,startX=60,y=140;
+  for(let i=0;i<CAP;i++){
+    const x=startX+i*(w+gap);
+    const g=document.createElementNS(NS,'g');
+    const r=document.createElementNS(NS,'rect');
+    r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',w); r.setAttribute('height',50);
+    r.setAttribute('rx',6);
+    let cls='slot-rect'+(i<arrStack.length?' filled':'');
+    if(i===highlightIdx) cls+=' active';
+    r.setAttribute('class',cls);
+    g.appendChild(r);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',x+w/2); t.setAttribute('y',y+25); t.setAttribute('class','slot-label');
+    t.textContent = i<arrStack.length ? arrStack[i] : '';
+    g.appendChild(t);
+    const idx=document.createElementNS(NS,'text');
+    idx.setAttribute('x',x+w/2); idx.setAttribute('y',y+70); idx.setAttribute('class','ptr-label');
+    idx.setAttribute('fill','#6d84a3');
+    idx.textContent='['+i+']';
+    g.appendChild(idx);
+    if(i===arrStack.length-1){
+      const tp=document.createElementNS(NS,'text');
+      tp.setAttribute('x',x+w/2); tp.setAttribute('y',y-14); tp.setAttribute('class','ptr-label');
+      tp.textContent='← top';
+      g.appendChild(tp);
+    }
+    svg.appendChild(g);
+  }
+  document.getElementById('sizeTag').textContent=`n = ${arrStack.length} / ${CAP}`;
+  document.getElementById('statsRow').innerHTML =
+    `<div>Top index: <b>${arrStack.length-1}</b></div><div>Capacity: <b>${CAP}</b></div><div>Empty: <b>${arrStack.length===0}</b></div><div>Full: <b>${arrStack.length===CAP}</b></div>`;
+}
+async function astackPush(val){
+  setBusy(true); renderCode(CODE_ASTACK,4); log(`push(${val})`,'step');
+  await sleep(getSpeed()/2);
+  if(arrStack.length===CAP){ renderCode(CODE_ASTACK,5); log('  stack overflow — capacity reached','err'); drawArrStack(); setBusy(false); return; }
+  renderCode(CODE_ASTACK,6); arrStack.push(val); drawArrStack(arrStack.length-1);
+  log(`  pushed ${val} at index ${arrStack.length-1}`,'result');
+  setBusy(false);
+}
+async function astackPop(){
+  setBusy(true); renderCode(CODE_ASTACK,9); log('pop()','step');
+  await sleep(getSpeed()/2);
+  if(arrStack.length===0){ renderCode(CODE_ASTACK,10); log('  stack underflow — nothing to pop','err'); setBusy(false); return; }
+  drawArrStack(arrStack.length-1); await sleep(getSpeed()/2);
+  renderCode(CODE_ASTACK,11); const v=arrStack.pop(); drawArrStack();
+  log(`  popped ${v}`,'result'); setBusy(false);
+}
+
+/* ---- Circular Queue ---- */
+const QCAP=8;
+let cq={buf:new Array(QCAP).fill(null), front:0, rear:-1, count:0};
+const CODE_CQUEUE=[
+"class CircularQueue {",
+"    T data[CAPACITY];",
+"    int front = 0, count = 0;",
+"public:",
+"    void enqueue(T val) {",
+"        if (count == CAPACITY)",
+"            throw std::runtime_error(\"queue full\");",
+"        int rear = (front + count) % CAPACITY;",
+"        data[rear] = val;",
+"        count++;",
+"    }",
+"    T dequeue() {",
+"        if (count == 0)",
+"            throw std::runtime_error(\"queue empty\");",
+"        T val = data[front];",
+"        front = (front + 1) % CAPACITY;",
+"        count--;",
+"        return val;",
+"    }",
+"};"
+];
+function drawCQueue(highlightIdx){
+  svg.innerHTML=svg.querySelector('defs').outerHTML;
+  const cx=420, cy=170, R=130;
+  for(let i=0;i<QCAP;i++){
+    const angle=(i/QCAP)*2*Math.PI - Math.PI/2;
+    const x=cx+R*Math.cos(angle), y=cy+R*Math.sin(angle);
+    const filled = cq.count>0 && (()=>{ // is index i occupied
+      for(let k=0;k<cq.count;k++){ if((cq.front+k)%QCAP===i) return true; } return false; })();
+    const g=document.createElementNS(NS,'g');
+    const r=document.createElementNS(NS,'rect');
+    r.setAttribute('x',x-32); r.setAttribute('y',y-22); r.setAttribute('width',64); r.setAttribute('height',44); r.setAttribute('rx',6);
+    let cls='slot-rect'+(filled?' filled':'');
+    if(i===highlightIdx) cls+=' active';
+    r.setAttribute('class',cls);
+    g.appendChild(r);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',x); t.setAttribute('y',y); t.setAttribute('class','slot-label');
+    t.textContent = filled ? cq.buf[i] : '';
+    g.appendChild(t);
+    const idx=document.createElementNS(NS,'text');
+    idx.setAttribute('x',x); idx.setAttribute('y',y+34); idx.setAttribute('class','ptr-label'); idx.setAttribute('fill','#6d84a3');
+    idx.textContent='['+i+']';
+    g.appendChild(idx);
+    let tags=[];
+    if(i===cq.front && cq.count>0) tags.push('front');
+    const rearIdx=(cq.front+cq.count-1+QCAP)%QCAP;
+    if(i===rearIdx && cq.count>0) tags.push('rear');
+    if(tags.length){
+      const tg=document.createElementNS(NS,'text');
+      tg.setAttribute('x',x); tg.setAttribute('y',y-32); tg.setAttribute('class','ptr-label');
+      tg.textContent=tags.join('/');
+      g.appendChild(tg);
+    }
+    svg.appendChild(g);
+  }
+  document.getElementById('sizeTag').textContent=`n = ${cq.count} / ${QCAP}`;
+  document.getElementById('statsRow').innerHTML =
+    `<div>Front idx: <b>${cq.count?cq.front:'—'}</b></div><div>Rear idx: <b>${cq.count?(cq.front+cq.count-1)%QCAP:'—'}</b></div><div>Capacity: <b>${QCAP}</b></div><div>Full: <b>${cq.count===QCAP}</b></div>`;
+}
+async function cqueueEnqueue(val){
+  setBusy(true); renderCode(CODE_CQUEUE,4); log(`enqueue(${val})`,'step');
+  await sleep(getSpeed()/2);
+  if(cq.count===QCAP){ renderCode(CODE_CQUEUE,5); log('  queue full','err'); setBusy(false); return; }
+  renderCode(CODE_CQUEUE,6);
+  const rearIdx=(cq.front+cq.count)%QCAP;
+  drawCQueue(rearIdx); await sleep(getSpeed()/2);
+  renderCode(CODE_CQUEUE,7); cq.buf[rearIdx]=val; cq.count++; drawCQueue(rearIdx);
+  log(`  enqueued ${val} at slot [${rearIdx}] (wraps mod ${QCAP})`,'result');
+  setBusy(false);
+}
+async function cqueueDequeue(){
+  setBusy(true); renderCode(CODE_CQUEUE,11); log('dequeue()','step');
+  await sleep(getSpeed()/2);
+  if(cq.count===0){ renderCode(CODE_CQUEUE,12); log('  queue empty','err'); setBusy(false); return; }
+  drawCQueue(cq.front); await sleep(getSpeed()/2);
+  renderCode(CODE_CQUEUE,13); const v=cq.buf[cq.front];
+  renderCode(CODE_CQUEUE,14); cq.front=(cq.front+1)%QCAP; cq.count--;
+  drawCQueue();
+  log(`  dequeued ${v}, front advances (mod ${QCAP})`,'result');
+  setBusy(false);
+}
+
+/* ---- Linked-List Stack ---- */
+let lstack=null; // {val, next}
+const CODE_LSTACK=[
+"struct Node { T data; Node* next; };",
+"",
+"class LinkedStack {",
+"    Node* head = nullptr;",
+"public:",
+"    void push(T val) {",
+"        Node* n = new Node{val, head};",
+"        head = n;",
+"    }",
+"    T pop() {",
+"        if (head == nullptr)",
+"            throw std::runtime_error(\"stack underflow\");",
+"        Node* old = head;",
+"        T val = old->data;",
+"        head = head->next;",
+"        delete old;",
+"        return val;",
+"    }",
+"};"
+];
+function drawLStack(highlightHead){
+  svg.innerHTML=svg.querySelector('defs').outerHTML;
+  let cur=lstack, x=560, y=180, i=0;
+  const nodes=[];
+  while(cur){ nodes.push({val:cur.val, x:x-i*110, y}); cur=cur.next; i++; }
+  // head label
+  const hx = nodes.length? nodes[0].x : x;
+  const ht=document.createElementNS(NS,'text');
+  ht.setAttribute('x',hx); ht.setAttribute('y',y-50); ht.setAttribute('class','ptr-label'); ht.textContent='head';
+  svg.appendChild(ht);
+  const harrow=document.createElementNS(NS,'line');
+  harrow.setAttribute('x1',hx); harrow.setAttribute('y1',y-40); harrow.setAttribute('x2',hx); harrow.setAttribute('y2',y-25);
+  harrow.setAttribute('class','edge');
+  svg.appendChild(harrow);
+  nodes.forEach((n,idx)=>{
+    const g=document.createElementNS(NS,'g');
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',n.x); c.setAttribute('cy',n.y); c.setAttribute('r',22);
+    c.setAttribute('class','node-circle'+(idx===highlightHead?' active':''));
+    g.appendChild(c);
+    const t=document.createElementNS(NS,'text'); t.setAttribute('x',n.x); t.setAttribute('y',n.y);
+    t.setAttribute('class','slot-label'); t.textContent=n.val; g.appendChild(t);
+    svg.appendChild(g);
+    if(idx<nodes.length-1){
+      const e=document.createElementNS(NS,'line');
+      e.setAttribute('x1',n.x-22); e.setAttribute('y1',n.y); e.setAttribute('x2',nodes[idx+1].x+22); e.setAttribute('y2',n.y);
+      e.setAttribute('class','edge'); svg.appendChild(e);
+    } else {
+      const nb=document.createElementNS(NS,'rect');
+      nb.setAttribute('x',n.x-70); nb.setAttribute('y',n.y-12); nb.setAttribute('width',36); nb.setAttribute('height',24);
+      nb.setAttribute('class','null-box'); svg.appendChild(nb);
+      const nt=document.createElementNS(NS,'text'); nt.setAttribute('x',n.x-52); nt.setAttribute('y',n.y);
+      nt.setAttribute('class','ptr-label'); nt.textContent='null'; svg.appendChild(nt);
+      const e=document.createElementNS(NS,'line');
+      e.setAttribute('x1',n.x-22); e.setAttribute('y1',n.y); e.setAttribute('x2',n.x-34); e.setAttribute('y2',n.y);
+      e.setAttribute('class','edge'); svg.appendChild(e);
+    }
+  });
+  if(nodes.length===0){
+    const nb=document.createElementNS(NS,'rect');
+    nb.setAttribute('x',hx-18); nb.setAttribute('y',y-12); nb.setAttribute('width',36); nb.setAttribute('height',24);
+    nb.setAttribute('class','null-box'); svg.appendChild(nb);
+    const nt=document.createElementNS(NS,'text'); nt.setAttribute('x',hx); nt.setAttribute('y',y);
+    nt.setAttribute('class','ptr-label'); nt.textContent='null'; svg.appendChild(nt);
+  }
+  document.getElementById('sizeTag').textContent=`n = ${nodes.length}`;
+  document.getElementById('statsRow').innerHTML=`<div>Top (head): <b>${nodes.length?nodes[0].val:'—'}</b></div><div>Empty: <b>${nodes.length===0}</b></div>`;
+}
+async function lstackPush(val){
+  setBusy(true); renderCode(CODE_LSTACK,5); log(`push(${val})`,'step');
+  await sleep(getSpeed()/2);
+  renderCode(CODE_LSTACK,6); lstack={val,next:lstack}; drawLStack(0);
+  log(`  new node ${val} → next points to old head`,'result'); setBusy(false);
+}
+async function lstackPop(){
+  setBusy(true); renderCode(CODE_LSTACK,9); log('pop()','step');
+  await sleep(getSpeed()/2);
+  if(!lstack){ renderCode(CODE_LSTACK,10); log('  stack underflow — head is null','err'); setBusy(false); return; }
+  drawLStack(0); await sleep(getSpeed()/2);
+  renderCode(CODE_LSTACK,13); const v=lstack.val; lstack=lstack.next; drawLStack();
+  log(`  popped ${v}, head advances to next node`,'result'); setBusy(false);
+}
+
+/* ---- Linked-List Queue ---- */
+let lqHead=null, lqTail=null;
+const CODE_LQUEUE=[
+"struct Node { T data; Node* next; };",
+"",
+"class LinkedQueue {",
+"    Node* head = nullptr;",
+"    Node* tail = nullptr;",
+"public:",
+"    void enqueue(T val) {",
+"        Node* n = new Node{val, nullptr};",
+"        if (tail == nullptr) head = tail = n;",
+"        else { tail->next = n; tail = n; }",
+"    }",
+"    T dequeue() {",
+"        if (head == nullptr)",
+"            throw std::runtime_error(\"queue empty\");",
+"        Node* old = head;",
+"        T val = old->data;",
+"        head = head->next;",
+"        if (head == nullptr) tail = nullptr;",
+"        delete old;",
+"        return val;",
+"    }",
+"};"
+];
+function drawLQueue(highlightIdx){
+  svg.innerHTML=svg.querySelector('defs').outerHTML;
+  const nodes=[]; let cur=lqHead, x=140, y=180, i=0;
+  while(cur){ nodes.push({val:cur.val, x:x+i*110, y}); cur=cur.next; i++; }
+  const hx = nodes.length? nodes[0].x : x;
+  const tx = nodes.length? nodes[nodes.length-1].x : x;
+  const ht=document.createElementNS(NS,'text'); ht.setAttribute('x',hx); ht.setAttribute('y',y-50);
+  ht.setAttribute('class','ptr-label'); ht.textContent='head'; svg.appendChild(ht);
+  const tt=document.createElementNS(NS,'text'); tt.setAttribute('x',tx); tt.setAttribute('y',y-50);
+  tt.setAttribute('class','ptr-label'); tt.setAttribute('fill','#4fd1c5'); tt.textContent='tail'; svg.appendChild(tt);
+  nodes.forEach((n,idx)=>{
+    const g=document.createElementNS(NS,'g');
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',n.x); c.setAttribute('cy',n.y); c.setAttribute('r',22);
+    c.setAttribute('class','node-circle'+(idx===highlightIdx?' active':''));
+    g.appendChild(c);
+    const t=document.createElementNS(NS,'text'); t.setAttribute('x',n.x); t.setAttribute('y',n.y);
+    t.setAttribute('class','slot-label'); t.textContent=n.val; g.appendChild(t);
+    svg.appendChild(g);
+    if(idx<nodes.length-1){
+      const e=document.createElementNS(NS,'line');
+      e.setAttribute('x1',n.x+22); e.setAttribute('y1',n.y); e.setAttribute('x2',nodes[idx+1].x-22); e.setAttribute('y2',n.y);
+      e.setAttribute('class','edge'); svg.appendChild(e);
+    } else {
+      const nb=document.createElementNS(NS,'rect');
+      nb.setAttribute('x',n.x+34); nb.setAttribute('y',n.y-12); nb.setAttribute('width',36); nb.setAttribute('height',24);
+      nb.setAttribute('class','null-box'); svg.appendChild(nb);
+      const nt=document.createElementNS(NS,'text'); nt.setAttribute('x',n.x+52); nt.setAttribute('y',n.y);
+      nt.setAttribute('class','ptr-label'); nt.textContent='null'; svg.appendChild(nt);
+      const e=document.createElementNS(NS,'line');
+      e.setAttribute('x1',n.x+22); e.setAttribute('y1',n.y); e.setAttribute('x2',n.x+34); e.setAttribute('y2',n.y);
+      e.setAttribute('class','edge'); svg.appendChild(e);
+    }
+  });
+  if(nodes.length===0){
+    const nb=document.createElementNS(NS,'rect');
+    nb.setAttribute('x',hx-18); nb.setAttribute('y',y-12); nb.setAttribute('width',36); nb.setAttribute('height',24);
+    nb.setAttribute('class','null-box'); svg.appendChild(nb);
+    const nt=document.createElementNS(NS,'text'); nt.setAttribute('x',hx); nt.setAttribute('y',y);
+    nt.setAttribute('class','ptr-label'); nt.textContent='null'; svg.appendChild(nt);
+  }
+  document.getElementById('sizeTag').textContent=`n = ${nodes.length}`;
+  document.getElementById('statsRow').innerHTML=`<div>Front (head): <b>${nodes.length?nodes[0].val:'—'}</b></div><div>Back (tail): <b>${nodes.length?nodes[nodes.length-1].val:'—'}</b></div><div>Empty: <b>${nodes.length===0}</b></div>`;
+}
+async function lqueueEnqueue(val){
+  setBusy(true); renderCode(CODE_LQUEUE,7); log(`enqueue(${val})`,'step');
+  await sleep(getSpeed()/2);
+  const n={val,next:null};
+  if(!lqTail){ renderCode(CODE_LQUEUE,8); lqHead=lqTail=n; }
+  else { renderCode(CODE_LQUEUE,9); lqTail.next=n; lqTail=n; }
+  drawLQueue(lqIndexOf(n));
+  log(`  enqueued ${val} at tail`,'result'); setBusy(false);
+}
+function lqIndexOf(node){ let cur=lqHead,i=0; while(cur){ if(cur===node) return i; cur=cur.next; i++; } return -1; }
+async function lqueueDequeue(){
+  setBusy(true); renderCode(CODE_LQUEUE,12); log('dequeue()','step');
+  await sleep(getSpeed()/2);
+  if(!lqHead){ renderCode(CODE_LQUEUE,13); log('  queue empty — head is null','err'); setBusy(false); return; }
+  drawLQueue(0); await sleep(getSpeed()/2);
+  renderCode(CODE_LQUEUE,16); const v=lqHead.val;
+  renderCode(CODE_LQUEUE,17); lqHead=lqHead.next;
+  renderCode(CODE_LQUEUE,18); if(!lqHead) lqTail=null;
+  drawLQueue();
+  log(`  dequeued ${v}, head advances`,'result'); setBusy(false);
+}
+
+/* ============ tab wiring ============ */
+const TABS={
+  astack:{
+    title:'Array Stack Visualization',
+    controls:`<div class="row">
+        <input type="number" id="valInput" placeholder="value">
+        <button class="op primary" id="btnPush">Push</button>
+        <button class="op" id="btnPop">Pop</button>
+      </div>
+      <div class="sep"></div>
+      <button class="op ghost" id="btnReset">Reset</button>
+      ${speedControlHTML()}`,
+    init(){ arrStack=[]; drawArrStack(); renderCode(CODE_ASTACK); },
+    wire(){
+      document.getElementById('btnPush').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) astackPush(v); };
+      document.getElementById('btnPop').onclick=()=>{ if(busy)return; astackPop(); };
+      document.getElementById('btnReset').onclick=()=>{ if(busy)return; arrStack=[]; drawArrStack(); log('array stack reset'); };
+    }
+  },
+  cqueue:{
+    title:'Circular Queue Visualization',
+    controls:`<div class="row">
+        <input type="number" id="valInput" placeholder="value">
+        <button class="op primary" id="btnEnq">Enqueue</button>
+        <button class="op" id="btnDeq">Dequeue</button>
+      </div>
+      <div class="sep"></div>
+      <button class="op ghost" id="btnReset">Reset</button>
+      ${speedControlHTML()}`,
+    init(){ cq={buf:new Array(QCAP).fill(null),front:0,rear:-1,count:0}; drawCQueue(); renderCode(CODE_CQUEUE); },
+    wire(){
+      document.getElementById('btnEnq').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) cqueueEnqueue(v); };
+      document.getElementById('btnDeq').onclick=()=>{ if(busy)return; cqueueDequeue(); };
+      document.getElementById('btnReset').onclick=()=>{ if(busy)return; cq={buf:new Array(QCAP).fill(null),front:0,rear:-1,count:0}; drawCQueue(); log('circular queue reset'); };
+    }
+  },
+  lstack:{
+    title:'Linked-List Stack Visualization',
+    controls:`<div class="row">
+        <input type="number" id="valInput" placeholder="value">
+        <button class="op primary" id="btnPush">Push</button>
+        <button class="op" id="btnPop">Pop</button>
+      </div>
+      <div class="sep"></div>
+      <button class="op ghost" id="btnReset">Reset</button>
+      ${speedControlHTML()}`,
+    init(){ lstack=null; drawLStack(); renderCode(CODE_LSTACK); },
+    wire(){
+      document.getElementById('btnPush').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) lstackPush(v); };
+      document.getElementById('btnPop').onclick=()=>{ if(busy)return; lstackPop(); };
+      document.getElementById('btnReset').onclick=()=>{ if(busy)return; lstack=null; drawLStack(); log('linked-list stack reset'); };
+    }
+  },
+  lqueue:{
+    title:'Linked-List Queue Visualization',
+    controls:`<div class="row">
+        <input type="number" id="valInput" placeholder="value">
+        <button class="op primary" id="btnEnq">Enqueue</button>
+        <button class="op" id="btnDeq">Dequeue</button>
+      </div>
+      <div class="sep"></div>
+      <button class="op ghost" id="btnReset">Reset</button>
+      ${speedControlHTML()}`,
+    init(){ lqHead=null; lqTail=null; drawLQueue(); renderCode(CODE_LQUEUE); },
+    wire(){
+      document.getElementById('btnEnq').onclick=()=>{ if(busy)return; const v=getVal(); if(v!==null) lqueueEnqueue(v); };
+      document.getElementById('btnDeq').onclick=()=>{ if(busy)return; lqueueDequeue(); };
+      document.getElementById('btnReset').onclick=()=>{ if(busy)return; lqHead=null; lqTail=null; drawLQueue(); log('linked-list queue reset'); };
+    }
+  }
+};
+
+function getVal(){
+  const el=document.getElementById('valInput');
+  const v=el.value.trim();
+  if(v===''){ log('enter a value first','err'); return null; }
+  const n=Number(v);
+  if(!Number.isFinite(n)){ log('value must be numeric','err'); return null; }
+  return Math.trunc(n);
+}
+
+function activateTab(name){
+  const t=TABS[name];
+  document.getElementById('vizTitle').textContent=t.title;
+  document.getElementById('controls').innerHTML=t.controls;
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  t.init();
+  t.wire();
+  wireSpeed();
+  const el=document.getElementById('valInput');
+  if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter'){ document.querySelector('#controls .primary')?.click(); } });
+}
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.onclick=()=>{ if(busy) return; activateTab(btn.dataset.tab); log(`— switched to ${btn.textContent} —`); };
+});
+
+/* initial */
+activateTab('astack');
+log('Demo loaded. Switch tabs to compare structures.');
+</script>
+</body>
+</html>
