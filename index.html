@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree Demos | CSC 2180 Data Structures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F3F6F8;
+    --ink: #1C2B3A;
+    --muted: #55677A;
+    --edge: #A9B7C4;
+    --node: #2A7F8F;
+    --avl: #C98A1E;
+    --card: #FFFFFF;
+    --focus: #1E5FD0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16202A;
+      --ink: #E6EDF3;
+      --muted: #9FB0C0;
+      --edge: #4A5B6C;
+      --node: #4FB3C4;
+      --avl: #E6B04F;
+      --card: #1E2A36;
+      --focus: #7FB0FF;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 1.0625rem/1.6 "Atkinson Hyperlegible", system-ui, sans-serif;
+  }
+  main { max-width: 52rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 3rem;
+  }
+  h1 {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.2rem, 6vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 1rem;
+  }
+  .intro { color: var(--muted); max-width: 34rem; margin: 0; }
+  header svg { width: 190px; height: auto; }
+  header svg line { stroke: var(--edge); stroke-width: 2.5; }
+  header svg circle { fill: var(--node); }
+  header svg .bal { fill: var(--avl); }
+
+  h2 {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 1.4rem;
+    margin: 0 0 0.25rem;
+  }
+  .section-note { color: var(--muted); margin: 0 0 1.25rem; }
+
+  ol.path { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  ol.path li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 1.5rem 3.25rem;
+  }
+  /* connecting line between steps */
+  ol.path li::after {
+    content: "";
+    position: absolute;
+    left: 1.05rem; top: 2.3rem; bottom: 0.2rem;
+    width: 2px;
+    background: var(--edge);
+  }
+  ol.path li:last-child::after { display: none; }
+  ol.path li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 0.1rem;
+    width: 2.2rem; height: 2.2rem;
+    border-radius: 50%;
+    background: var(--node);
+    color: #fff;
+    font-weight: 700;
+    display: grid; place-items: center;
+  }
+  ol.path li.avl::before { background: var(--avl); color: #1C2B3A; }
+
+  a.demo {
+    display: block;
+    background: var(--card);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    color: inherit;
+    text-decoration: none;
+  }
+  a.demo:hover { border-color: var(--edge); }
+  a.demo:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  a.demo strong {
+    display: block;
+    font-size: 1.15rem;
+    color: var(--node);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  li.avl a.demo strong { color: var(--avl); }
+  a.demo span { display: block; color: var(--muted); margin-top: 0.2rem; }
+  a.demo code { font-size: 0.85em; color: var(--muted); }
+
+  .tips {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--edge);
+  }
+  .tips ul { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+  .tips li { margin-bottom: 0.4rem; }
+
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.95rem; }
+
+  @media (max-width: 560px) {
+    header { grid-template-columns: 1fr; }
+    header svg { width: 150px; order: -1; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Binary search trees, one step at a time</h1>
+      <p class="intro">Interactive demos for CSC 2180 Data Structures. Insert and delete values, watch the tree change, and follow the pseudocode line by line as each operation runs.</p>
+    </div>
+    <svg viewBox="0 0 200 150" role="img" aria-label="A small balanced binary tree">
+      <line x1="100" y1="22" x2="55" y2="72"/>
+      <line x1="100" y1="22" x2="145" y2="72"/>
+      <line x1="55" y1="72" x2="30" y2="125"/>
+      <line x1="55" y1="72" x2="80" y2="125"/>
+      <line x1="145" y1="72" x2="170" y2="125"/>
+      <circle cx="100" cy="22" r="14" class="bal"/>
+      <circle cx="55" cy="72" r="14"/>
+      <circle cx="145" cy="72" r="14"/>
+      <circle cx="30" cy="125" r="14"/>
+      <circle cx="80" cy="125" r="14"/>
+      <circle cx="170" cy="125" r="14"/>
+    </svg>
+  </header>
+
+  <section>
+    <h2>Suggested order</h2>
+    <p class="section-note">Each demo builds on the one before it. Start with plain BSTs, then see how AVL trees keep themselves balanced.</p>
+
+    <ol class="path">
+      <li>
+        <a class="demo" href="bst_demo.html">
+          <strong>BST demo</strong>
+          <span>Build a binary search tree by inserting, searching for, and deleting values. See where each value lands and why.</span>
+          <code>bst_demo.html</code>
+        </a>
+      </li>
+      <li>
+        <a class="demo" href="bst_demo_pseudocode.html">
+          <strong>BST with pseudocode</strong>
+          <span>The same operations, with the matching pseudocode highlighted as each step runs. Useful for connecting the picture to the code you write.</span>
+          <code>bst_demo_pseudocode.html</code>
+        </a>
+      </li>
+      <li class="avl">
+        <a class="demo" href="avl_demo_pseudocode.html">
+          <strong>AVL tree with pseudocode</strong>
+          <span>Insert values and watch balance factors update. When the tree gets lopsided, see which rotation fixes it and the code behind it.</span>
+          <code>avl_demo_pseudocode.html</code>
+        </a>
+      </li>
+      <li>
+        <a class="demo" href="combined_demo.html">
+          <strong>Combined demo</strong>
+          <span>BST and AVL behavior in one place. Try the same sequence of values in both and compare the shape and height of the results.</span>
+          <code>combined_demo.html</code>
+        </a>
+      </li>
+    </ol>
+  </section>
+
+  <section class="tips">
+    <h2>Things to try</h2>
+    <ul>
+      <li>Insert 10, 20, 30, 40, 50 into a plain BST. What shape do you get, and how long does a search take?</li>
+      <li>Insert the same values into the AVL tree and count the rotations.</li>
+      <li>Delete a node with two children and watch which value replaces it.</li>
+    </ul>
+  </section>
+
+  <footer>
+    CSC 2180 Data Structures, UVA Wise.
+  </footer>
+</main>
+</body>
+</html>
