@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSC 2180 · AVL Tree Visualizer (Pseudocode Only)</title>
+<style>
+  :root{
+    --navy:#0f2545;
+    --navy-2:#16335e;
+    --navy-3:#1e4278;
+    --accent:#ff8c42;
+    --accent-2:#4fd1c5;
+    --gold:#ffd479;
+    --bg:#0b1626;
+    --panel:#0f1e34;
+    --panel-2:#132844;
+    --text:#e8eef6;
+    --text-dim:#9db0c9;
+    --border:#26456f;
+    --good:#4fd18a;
+    --bad:#ff6b6b;
+    --mono: "Consolas","Menlo","Monaco",monospace;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+  }
+  header{
+    background:linear-gradient(90deg,var(--navy) 0%,var(--navy-3) 100%);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:2px solid var(--accent);
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  header h1{font-size:1.2rem;margin:0;letter-spacing:0.3px;}
+  header h1 span{color:var(--accent);}
+  header .badge{
+    font-size:0.72rem;color:var(--text-dim);
+    background:rgba(255,255,255,0.06);
+    padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+  }
+  .notice{
+    background:var(--panel-2);
+    border-bottom:1px solid var(--border);
+    padding:9px 16px;
+    font-size:0.8rem;
+    color:var(--text-dim);
+    text-align:center;
+  }
+  .notice b{color:var(--accent-2);}
+  main{
+    flex:1;
+    display:grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap:14px;
+    padding:14px;
+    max-width:1500px;
+    margin:0 auto;
+    width:100%;
+  }
+  @media (max-width: 980px){ main{grid-template-columns:1fr;} }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .panel-title{
+    background:var(--panel-2);
+    padding:8px 14px;
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--text-dim);
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  #treeWrap{
+    flex:1;
+    min-height:340px;
+    overflow:auto;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:10px;
+  }
+  svg{overflow:visible;}
+  .node-circle{
+    fill:var(--navy-3);
+    stroke:var(--accent-2);
+    stroke-width:2;
+    transition:fill 0.25s, stroke 0.25s;
+  }
+  .node-circle.visited{fill:#1c3a63;}
+  .node-circle.active{fill:var(--accent);stroke:var(--accent);}
+  .node-circle.found{fill:var(--good);stroke:var(--good);}
+  .node-circle.fresh{fill:var(--good);stroke:var(--good);}
+  .node-circle.removed{fill:var(--bad);stroke:var(--bad);}
+  .node-circle.unbalanced{fill:#7a2432;stroke:var(--bad);stroke-width:4;}
+  .node-circle.child{stroke:var(--gold);stroke-width:4;}
+  .node-circle.pivot{fill:var(--gold);stroke:var(--gold);}
+  .node-circle.t2{stroke:var(--gold);stroke-width:3;stroke-dasharray:5 3;}
+  .node-label{
+    fill:var(--text);
+    font-size:14px;
+    font-weight:600;
+    text-anchor:middle;
+    dominant-baseline:central;
+    font-family:var(--mono);
+    pointer-events:none;
+  }
+  .node-circle.pivot + .node-label,
+  .node-circle.active + .node-label,
+  .node-circle.fresh + .node-label,
+  .node-circle.found + .node-label{fill:#1a1206;}
+  .bf-label{
+    font-size:11px;
+    font-family:var(--mono);
+    font-weight:700;
+    text-anchor:start;
+    dominant-baseline:central;
+    pointer-events:none;
+  }
+  .bf-zero{fill:var(--text-dim);}
+  .bf-one{fill:var(--accent-2);}
+  .bf-bad{fill:var(--bad);font-size:13px;}
+  .edge{stroke:var(--border);stroke-width:2;}
+
+  .controls{
+    padding:12px 14px;
+    border-top:1px solid var(--border);
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    background:var(--panel-2);
+  }
+  .controls input[type=number]{
+    width:80px;
+    padding:7px 8px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+  }
+  button{
+    background:var(--navy-3);
+    color:var(--text);
+    border:1px solid var(--border);
+    padding:7px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:0.85rem;
+    transition:background 0.15s, transform 0.1s;
+    white-space:nowrap;
+  }
+  button:hover{background:#25538f;}
+  button:active{transform:scale(0.96);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#20140a;font-weight:700;}
+  button.primary:hover{background:#ffa15e;}
+  button.ghost{background:transparent;}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
+  .speed-row{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-dim);}
+  .speed-row input[type=range]{width:90px;}
+  select{
+    background:var(--bg);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:5px 8px;
+    font-family:var(--mono);
+    font-size:0.78rem;
+  }
+  .small-label{font-size:0.78rem;color:var(--text-dim);}
+
+  #codePanel{flex:1;overflow:auto;}
+  pre#codeBlock{
+    margin:0;
+    padding:14px 16px;
+    font-family:var(--mono);
+    font-size:0.84rem;
+    line-height:1.6;
+    color:#c9d6e8;
+    white-space:pre;
+  }
+  .code-line{display:block;padding:1px 8px;border-radius:4px;}
+  .code-line.hl{background:rgba(255,140,66,0.22);border-left:3px solid var(--accent);padding-left:5px;}
+  .kw{color:#6cb6ff;}
+  .ty{color:#4fd1c5;}
+  .cm{color:#6d84a3;font-style:italic;}
+  .fn{color:#ffd479;font-weight:700;}
+
+  #logPanel{max-height:260px;min-height:200px;}
+  #log{
+    flex:1;
+    overflow-y:auto;
+    padding:10px 14px;
+    font-family:var(--mono);
+    font-size:0.8rem;
+    color:var(--text-dim);
+  }
+  #log div{padding:2px 0;border-bottom:1px dashed rgba(255,255,255,0.05);}
+  #log div.step{color:var(--accent-2);}
+  #log div.result{color:var(--good);font-weight:600;}
+  #log div.err{color:var(--bad);}
+  #log div.case{color:var(--gold);font-weight:600;}
+
+  #statsRow{
+    display:flex;
+    gap:16px;
+    padding:8px 14px;
+    background:var(--panel-2);
+    border-top:1px solid var(--border);
+    font-size:0.78rem;
+    color:var(--text-dim);
+    flex-wrap:wrap;
+  }
+  #statsRow b{color:var(--text);}
+  .legend{
+    display:flex;gap:12px;flex-wrap:wrap;
+    padding:6px 14px;font-size:0.72rem;color:var(--text-dim);
+    border-top:1px solid var(--border);
+  }
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+  .col-right{display:flex;flex-direction:column;gap:14px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>CSC 2180 <span>&middot;</span> AVL Tree <span>Visualizer</span></h1>
+  <div class="badge">Pseudocode Only, No C++</div>
+</header>
+<div class="notice">Watch <b>what</b> each operation does to the tree, then write the <b>how</b> yourself. The small number beside each node is its <b>balance factor</b>: height(left) minus height(right). An empty subtree has height <b>-1</b>.</div>
+
+<main>
+  <div class="panel">
+    <div class="panel-title">
+      <span>Tree Visualization</span>
+      <span>
+        <label class="small-label" for="labelMode">Show</label>
+        <select id="labelMode">
+          <option value="bf">balance factor</option>
+          <option value="h">height</option>
+          <option value="none">nothing (predict!)</option>
+        </select>
+        &nbsp;<span id="sizeTag">n = 0</span>
+      </span>
+    </div>
+    <div id="treeWrap">
+      <svg id="svg" width="100%" height="420" viewBox="0 0 900 420" preserveAspectRatio="xMidYMin meet"></svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>current node</span>
+      <span><i style="background:#7a2432;border:2px solid var(--bad)"></i>unbalanced (|bf| = 2)</span>
+      <span><i style="background:var(--gold)"></i>node moving up</span>
+      <span><i style="border:2px dashed var(--gold)"></i>subtree T2 changing parent</span>
+      <span><i style="background:var(--good)"></i>new / found</span>
+    </div>
+    <div id="statsRow">
+      <div>Height: <b id="statHeight">-</b></div>
+      <div>Best possible height: <b id="statBest">-</b></div>
+      <div>Rotations: <b id="statRot">0</b></div>
+      <div>AVL property: <b id="statValid">-</b></div>
+    </div>
+    <div class="controls">
+      <div class="row">
+        <input type="number" id="valInput" placeholder="value" />
+        <button class="primary" id="btnInsert">Insert</button>
+        <button id="btnDelete">Delete</button>
+        <button id="btnSearch">Search</button>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button id="btnInorder">Inorder</button>
+        <button id="btnPreorder">Preorder</button>
+        <button id="btnPostorder">Postorder</button>
+        <button id="btnHeight">Height</button>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <select id="scenario">
+          <option value="ll">Left-Left case</option>
+          <option value="rr">Right-Right case</option>
+          <option value="lr">Left-Right case</option>
+          <option value="rl">Right-Left case</option>
+          <option value="asc">Sorted input 10 to 70</option>
+          <option value="del">Delete causes rotation</option>
+          <option value="cascade">Delete cascades up</option>
+        </select>
+        <button id="btnScenario">Run Scenario</button>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button class="ghost" id="btnRandom">Random Tree</button>
+        <button class="ghost" id="btnClear">Clear</button>
+      </div>
+      <div class="speed-row">
+        <label for="speed">Speed</label>
+        <input type="range" id="speed" min="200" max="2000" step="50" value="750">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-right">
+    <div class="panel" style="height:380px;">
+      <div class="panel-title">
+        <span>Pseudocode (algorithm outline)</span>
+        <select id="funcSelect">
+          <option value="insert">INSERT</option>
+          <option value="remove">REMOVE</option>
+          <option value="rebalance">REBALANCE</option>
+          <option value="rotations">ROTATE-RIGHT / ROTATE-LEFT</option>
+          <option value="height">HEIGHT / BALANCE</option>
+          <option value="search">SEARCH</option>
+          <option value="inorder">INORDER</option>
+          <option value="preorder">PREORDER</option>
+          <option value="postorder">POSTORDER</option>
+        </select>
+      </div>
+      <div id="codePanel"><pre id="codeBlock"></pre></div>
+    </div>
+
+    <div class="panel" id="logPanel">
+      <div class="panel-title"><span>Operation Log</span>
+        <button class="ghost" id="btnClearLog" style="padding:3px 8px;font-size:0.72rem;">clear</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------------- AVL model ---------------- */
+class Node{
+  constructor(key){ this.key=key; this.left=null; this.right=null; this.h=0; }
+}
+let root=null;
+let rotations=0;
+
+function H(n){ return n===null ? -1 : n.h; }
+function updateH(n){ n.h = 1 + Math.max(H(n.left), H(n.right)); }
+function bf(n){ return H(n.left) - H(n.right); }
+function fmt(b){ return b>0 ? '+'+b : String(b); }
+
+function rotR(y){ const x=y.left, t2=x.right; x.right=y; y.left=t2; updateH(y); updateH(x); return x; }
+function rotL(x){ const y=x.right, t2=y.left; y.left=x; x.right=t2; updateH(x); updateH(y); return y; }
+function rebalance(n){
+  const b=bf(n);
+  if(b>1){ if(bf(n.left)<0) n.left=rotL(n.left); return rotR(n); }
+  if(b<-1){ if(bf(n.right)>0) n.right=rotR(n.right); return rotL(n); }
+  return n;
+}
+function insertNode(n,key){
+  if(n===null) return new Node(key);
+  if(key<n.key) n.left=insertNode(n.left,key);
+  else if(key>n.key) n.right=insertNode(n.right,key);
+  else return n;
+  updateH(n);
+  return rebalance(n);
+}
+function findMin(n){ while(n.left) n=n.left; return n; }
+function countNodes(n){ return n===null ? 0 : 1+countNodes(n.left)+countNodes(n.right); }
+function trueHeight(n){ return n===null ? -1 : 1+Math.max(trueHeight(n.left),trueHeight(n.right)); }
+function isAVL(n){
+  if(n===null) return true;
+  return Math.abs(trueHeight(n.left)-trueHeight(n.right))<=1 && isAVL(n.left) && isAVL(n.right);
+}
+function attach(parent,side,child){
+  if(parent===null) root=child;
+  else if(side==='L') parent.left=child;
+  else parent.right=child;
+}
+
+/* ---------------- Logging ---------------- */
+const logEl=document.getElementById('log');
+function log(msg,cls){
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=msg;
+  logEl.appendChild(d);
+  logEl.scrollTop=logEl.scrollHeight;
+}
+document.getElementById('btnClearLog').onclick=()=>{ logEl.innerHTML=''; };
+
+/* ---------------- Pseudocode panel ---------------- */
+const CODE = {
+insert:[
+"INSERT(node, key):",
+"    if node = NIL",
+"        return new Node(key)          // height 0",
+"",
+"    if key < node.key",
+"        node.left = INSERT(node.left, key)",
+"    else if key > node.key",
+"        node.right = INSERT(node.right, key)",
+"    else",
+"        return node                   // no duplicates",
+"",
+"    UPDATE-HEIGHT(node)               // on the way back up",
+"    return REBALANCE(node)"
+],
+remove:[
+"REMOVE(node, key):",
+"    if node = NIL",
+"        return NIL                    // key not in tree",
+"",
+"    if key < node.key",
+"        node.left = REMOVE(node.left, key)",
+"    else if key > node.key",
+"        node.right = REMOVE(node.right, key)",
+"    else:  // this node holds the key",
+"        if node.left = NIL or node.right = NIL",
+"            replacement = the non-NIL child, or NIL",
+"            discard node",
+"            return replacement",
+"        successor = FIND-MIN(node.right)",
+"        node.key = successor.key",
+"        node.right = REMOVE(node.right, successor.key)",
+"",
+"    UPDATE-HEIGHT(node)               // on the way back up",
+"    return REBALANCE(node)"
+],
+rebalance:[
+"REBALANCE(node):",
+"    bf = BALANCE(node)",
+"    if bf > 1                         // left heavy",
+"        if BALANCE(node.left) < 0     // Left-Right case",
+"            node.left = ROTATE-LEFT(node.left)",
+"        return ROTATE-RIGHT(node)",
+"    if bf < -1                        // right heavy",
+"        if BALANCE(node.right) > 0    // Right-Left case",
+"            node.right = ROTATE-RIGHT(node.right)",
+"        return ROTATE-LEFT(node)",
+"    return node                       // already balanced"
+],
+rotations:[
+"ROTATE-RIGHT(y):",
+"    x = y.left",
+"    T2 = x.right",
+"    x.right = y",
+"    y.left = T2",
+"    UPDATE-HEIGHT(y)                  // y is now lower: update first",
+"    UPDATE-HEIGHT(x)",
+"    return x                          // new root of this subtree",
+"",
+"ROTATE-LEFT(x):",
+"    y = x.right",
+"    T2 = y.left",
+"    y.left = x",
+"    x.right = T2",
+"    UPDATE-HEIGHT(x)",
+"    UPDATE-HEIGHT(y)",
+"    return y"
+],
+height:[
+"HEIGHT(node):",
+"    if node = NIL",
+"        return -1",
+"    return node.height                // stored in the node",
+"",
+"UPDATE-HEIGHT(node):",
+"    node.height = 1 + max(HEIGHT(node.left),",
+"                          HEIGHT(node.right))",
+"",
+"BALANCE(node):",
+"    return HEIGHT(node.left) - HEIGHT(node.right)"
+],
+search:[
+"SEARCH(node, key):",
+"    if node = NIL",
+"        return false",
+"    if key = node.key",
+"        return true",
+"    if key < node.key",
+"        return SEARCH(node.left, key)",
+"    return SEARCH(node.right, key)"
+],
+inorder:[
+"INORDER(node):",
+"    if node = NIL: return",
+"    INORDER(node.left)",
+"    visit(node)",
+"    INORDER(node.right)"
+],
+preorder:[
+"PREORDER(node):",
+"    if node = NIL: return",
+"    visit(node)",
+"    PREORDER(node.left)",
+"    PREORDER(node.right)"
+],
+postorder:[
+"POSTORDER(node):",
+"    if node = NIL: return",
+"    POSTORDER(node.left)",
+"    POSTORDER(node.right)",
+"    visit(node)"
+]
+};
+
+const L = {
+  insert:    {base:0, newnode:2, less:4, greater:6, dup:9, update:11, rebal:12},
+  remove:    {base:0, notfound:2, less:4, greater:6, oneChild:9, splice:12, succ:13, copy:14, recurse:15, update:17, rebal:18},
+  rebalance: {bf:1, leftHeavy:2, lrCheck:3, lrRot:4, rotR:5, rightHeavy:6, rlCheck:7, rlRot:8, rotL:9},
+  rotations: {right:0, rightLink:3, left:9, leftLink:12},
+  height:    {base:0, update:5},
+  search:    {base:0, hit:4, less:5, greater:7},
+  inorder:   {base:1, left:2, visit:3, right:4},
+  preorder:  {base:1, visit:2, left:3, right:4},
+  postorder: {base:1, left:2, right:3, visit:4}
+};
+
+function highlightSyntax(line){
+  let s=line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let comment='';
+  const ci=s.indexOf('//');
+  if(ci>=0){ comment=s.slice(ci); s=s.slice(0,ci); }
+  s=s.replace(/\b(if|else|while|return|discard|new|or)\b/g,'<span class="kw">$1</span>');
+  s=s.replace(/\bNIL\b/g,'<span class="ty">NIL</span>');
+  s=s.replace(/(UPDATE-HEIGHT|REBALANCE|ROTATE-RIGHT|ROTATE-LEFT|FIND-MIN|INSERT|SEARCH|REMOVE|INORDER|PREORDER|POSTORDER|HEIGHT|BALANCE|visit|max)(?=\()/g,'<span class="fn">$1</span>');
+  if(comment) s+=`<span class="cm">${comment}</span>`;
+  return s;
+}
+
+let currentFunc='insert';
+function renderCode(func,idx){
+  if(func){ currentFunc=func; document.getElementById('funcSelect').value=func; }
+  const lines=CODE[currentFunc];
+  document.getElementById('codeBlock').innerHTML=lines.map((text,i)=>{
+    const cls=(idx!==undefined && idx===i)?'code-line hl':'code-line';
+    return `<span class="${cls}">${highlightSyntax(text)||'&nbsp;'}</span>`;
+  }).join('\n');
+  const hl=document.querySelector('.code-line.hl');
+  if(hl) hl.scrollIntoView({block:'nearest'});
+}
+document.getElementById('funcSelect').onchange=e=>{ currentFunc=e.target.value; renderCode(); };
+
+/* ---------------- Layout & render ---------------- */
+const svg=document.getElementById('svg');
+const NS='http://www.w3.org/2000/svg';
+let lastHL={};
+
+function allNodes(){ const a=[]; (function w(n){ if(!n) return; a.push(n); w(n.left); w(n.right); })(root); return a; }
+
+function layout(){
+  let counter=0;
+  function assign(n,depth){
+    if(n===null) return;
+    assign(n.left,depth+1);
+    n.col=counter++; n.depth=depth;
+    assign(n.right,depth+1);
+  }
+  assign(root,0);
+  const n=countNodes(root);
+  const width=Math.max(760,n*70);
+  const spacing=n>0 ? width/(n+1) : 0;
+  allNodes().forEach(nd=>{ nd.px=(nd.col+1)*spacing; nd.py=50+nd.depth*72; });
+  svg.setAttribute('viewBox',`0 0 ${width} ${Math.max(420,(trueHeight(root)+2)*72)}`);
+}
+function snap(){ allNodes().forEach(n=>{ n.dx=n.px; n.dy=n.py; }); }
+
+function has(list,n){ return Array.isArray(list) && list.includes(n); }
+
+function render(hl={}){
+  lastHL=hl;
+  svg.innerHTML='';
+  const mode=document.getElementById('labelMode').value;
+  (function edges(n){
+    if(!n) return;
+    [n.left,n.right].forEach(c=>{
+      if(!c) return;
+      const line=document.createElementNS(NS,'line');
+      line.setAttribute('x1',n.dx); line.setAttribute('y1',n.dy);
+      line.setAttribute('x2',c.dx); line.setAttribute('y2',c.dy);
+      line.setAttribute('class','edge');
+      svg.appendChild(line);
+      edges(c);
+    });
+  })(root);
+  allNodes().forEach(n=>{
+    const g=document.createElementNS(NS,'g');
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',n.dx); c.setAttribute('cy',n.dy); c.setAttribute('r',20);
+    let cls='node-circle';
+    if(has(hl.visited,n)) cls+=' visited';
+    if(hl.active===n) cls+=' active';
+    if(hl.found===n) cls+=' found';
+    if(hl.fresh===n) cls+=' fresh';
+    if(hl.removed===n) cls+=' removed';
+    if(hl.child===n) cls+=' child';
+    if(hl.t2===n) cls+=' t2';
+    if(hl.unbalanced===n) cls+=' unbalanced';
+    if(hl.pivot===n) cls+=' pivot';
+    c.setAttribute('class',cls);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',n.dx); t.setAttribute('y',n.dy);
+    t.setAttribute('class','node-label');
+    t.textContent=n.key;
+    g.appendChild(c); g.appendChild(t);
+    if(mode!=='none'){
+      const b=document.createElementNS(NS,'text');
+      b.setAttribute('x',n.dx+23); b.setAttribute('y',n.dy-17);
+      if(mode==='bf'){
+        const v=bf(n);
+        b.setAttribute('class','bf-label '+(Math.abs(v)>=2?'bf-bad':(v===0?'bf-zero':'bf-one')));
+        b.textContent=fmt(v);
+      } else {
+        b.setAttribute('class','bf-label bf-zero');
+        b.textContent='h='+n.h;
+      }
+      g.appendChild(b);
+    }
+    svg.appendChild(g);
+  });
+  updateStats();
+}
+function draw(hl={}){ layout(); snap(); render(hl); }
+
+function animateLayout(hl={}){
+  const nodes=allNodes();
+  nodes.forEach(n=>{ n.ox=(n.dx===undefined)?null:n.dx; n.oy=n.dy; });
+  layout();
+  nodes.forEach(n=>{ if(n.ox===null){ n.ox=n.px; n.oy=n.py; } });
+  const D=Math.max(300,getSpeed()*0.9);
+  return new Promise(res=>{
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/D);
+      const e=t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+      nodes.forEach(n=>{ n.dx=n.ox+(n.px-n.ox)*e; n.dy=n.oy+(n.py-n.oy)*e; });
+      render(hl);
+      if(t<1) requestAnimationFrame(frame); else res();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+function updateStats(){
+  const n=countNodes(root);
+  document.getElementById('sizeTag').textContent=`n = ${n}`;
+  document.getElementById('statHeight').textContent=root?trueHeight(root):'-';
+  document.getElementById('statBest').textContent=root?Math.floor(Math.log2(n)):'-';
+  document.getElementById('statRot').textContent=rotations;
+  const ok=isAVL(root);
+  const el=document.getElementById('statValid');
+  el.textContent=root?(ok?'holds':'VIOLATED'):'-';
+  el.style.color=root?(ok?'var(--good)':'var(--bad)'):'';
+}
+document.getElementById('labelMode').onchange=()=>render(lastHL);
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function getSpeed(){ return Number(document.getElementById('speed').value); }
+
+/* ---------------- Busy handling ---------------- */
+let busy=false, scenarioRunning=false, noChange=false;
+function setBusy(b){
+  busy=b||scenarioRunning;
+  document.querySelectorAll('button').forEach(btn=>btn.disabled=busy);
+}
+
+/* ---------------- Animated rotations & rebalancing ---------------- */
+async function rotateA(dir,z,parent,side){
+  const up = dir==='right' ? z.left : z.right;
+  const t2 = dir==='right' ? up.right : up.left;
+  renderCode('rotations', dir==='right' ? L.rotations.right : L.rotations.left);
+  render({unbalanced:z, pivot:up, t2});
+  log(`  ROTATE-${dir.toUpperCase()}(${z.key}): ${up.key} moves up, ${z.key} moves down`);
+  if(t2) log(`    subtree T2 rooted at ${t2.key} switches from ${up.key} to ${z.key}`);
+  await sleep(getSpeed());
+  const nr = dir==='right' ? rotR(z) : rotL(z);
+  attach(parent,side,nr);
+  rotations++;
+  renderCode('rotations', dir==='right' ? L.rotations.rightLink : L.rotations.leftLink);
+  await animateLayout({pivot:nr, t2});
+  await sleep(getSpeed()*0.7);
+  return nr;
+}
+
+async function rebalanceA(node,parent,side,caller){
+  const b=bf(node);
+  if(Math.abs(b)<=1){ renderCode(caller, L[caller].rebal); return node; }
+  const R=L.rebalance;
+  renderCode('rebalance', R.bf);
+  render({unbalanced:node});
+  log(`  balance(${node.key}) = ${fmt(b)}: ${b>1?'left':'right'} heavy, must rebalance`,'err');
+  await sleep(getSpeed()*1.2);
+  let nr;
+  if(b>1){
+    renderCode('rebalance', R.lrCheck);
+    const cb=bf(node.left);
+    render({unbalanced:node, child:node.left});
+    if(cb<0){
+      log(`  balance(${node.left.key}) = ${fmt(cb)}: Left-Right case (double rotation)`,'case');
+      await sleep(getSpeed());
+      renderCode('rebalance', R.lrRot); await sleep(getSpeed()*0.5);
+      await rotateA('left', node.left, node, 'L');
+    } else {
+      log(`  balance(${node.left.key}) = ${fmt(cb)}: Left-Left case (single rotation)`,'case');
+      await sleep(getSpeed());
+    }
+    renderCode('rebalance', R.rotR); await sleep(getSpeed()*0.5);
+    nr = await rotateA('right', node, parent, side);
+  } else {
+    renderCode('rebalance', R.rlCheck);
+    const cb=bf(node.right);
+    render({unbalanced:node, child:node.right});
+    if(cb>0){
+      log(`  balance(${node.right.key}) = ${fmt(cb)}: Right-Left case (double rotation)`,'case');
+      await sleep(getSpeed());
+      renderCode('rebalance', R.rlRot); await sleep(getSpeed()*0.5);
+      await rotateA('right', node.right, node, 'R');
+    } else {
+      log(`  balance(${node.right.key}) = ${fmt(cb)}: Right-Right case (single rotation)`,'case');
+      await sleep(getSpeed());
+    }
+    renderCode('rebalance', R.rotL); await sleep(getSpeed()*0.5);
+    nr = await rotateA('left', node, parent, side);
+  }
+  log(`  ${nr.key} is now the root of this subtree`);
+  return nr;
+}
+
+/* ---------------- Animated insert ---------------- */
+async function insertA(node,key,parent,side,path){
+  if(node===null){
+    const n=new Node(key);
+    attach(parent,side,n);
+    renderCode('insert', L.insert.newnode);
+    await animateLayout({visited:path, fresh:n});
+    log(`  empty spot: new node ${key} with height 0`);
+    await sleep(getSpeed());
+    return n;
+  }
+  path.push(node);
+  render({visited:path, active:node});
+  if(key<node.key){
+    renderCode('insert', L.insert.less);
+    log(`  ${key} < ${node.key} → go left`);
+    await sleep(getSpeed());
+    await insertA(node.left,key,node,'L',path);
+  } else if(key>node.key){
+    renderCode('insert', L.insert.greater);
+    log(`  ${key} > ${node.key} → go right`);
+    await sleep(getSpeed());
+    await insertA(node.right,key,node,'R',path);
+  } else {
+    renderCode('insert', L.insert.dup);
+    log(`  ${key} already in tree: no duplicate inserted`,'err');
+    noChange=true;
+    await sleep(getSpeed());
+    return node;
+  }
+  if(noChange) return node;
+  updateH(node);
+  renderCode('insert', L.insert.update);
+  render({visited:path, active:node});
+  log(`  back at ${node.key}: height ${node.h}, balance ${fmt(bf(node))}`);
+  await sleep(getSpeed());
+  return await rebalanceA(node,parent,side,'insert');
+}
+
+async function animatedInsert(val){
+  setBusy(true);
+  log(`Insert ${val}`,'step');
+  noChange=false;
+  const before=rotations;
+  await insertA(root,val,null,null,[]);
+  draw();
+  if(!noChange){
+    const r=rotations-before;
+    log(`  inserted ${val}` + (r?` (${r} rotation${r>1?'s':''})`:' (no rotation needed)'),'result');
+  }
+  setBusy(false);
+}
+
+/* ---------------- Animated delete ---------------- */
+async function removeA(node,key,parent,side,path){
+  if(node===null){
+    renderCode('remove', L.remove.notfound);
+    log(`  reached NIL: ${key} not in tree`,'err');
+    noChange=true;
+    await sleep(getSpeed());
+    return null;
+  }
+  path.push(node);
+  render({visited:path, active:node});
+  if(key<node.key){
+    renderCode('remove', L.remove.less);
+    log(`  ${key} < ${node.key} → go left`);
+    await sleep(getSpeed());
+    await removeA(node.left,key,node,'L',path);
+  } else if(key>node.key){
+    renderCode('remove', L.remove.greater);
+    log(`  ${key} > ${node.key} → go right`);
+    await sleep(getSpeed());
+    await removeA(node.right,key,node,'R',path);
+  } else {
+    render({visited:path, removed:node});
+    if(!node.left || !node.right){
+      renderCode('remove', L.remove.oneChild);
+      const rep=node.left||node.right;
+      log(`  found ${node.key}: ` + (rep ? `one child, splice in ${rep.key}` : `leaf, just remove it`));
+      await sleep(getSpeed());
+      renderCode('remove', L.remove.splice);
+      attach(parent,side,rep);
+      await animateLayout({visited:path});
+      return rep;
+    }
+    renderCode('remove', L.remove.succ);
+    const succ=findMin(node.right);
+    render({visited:path, removed:node, found:succ});
+    log(`  found ${node.key}: two children, inorder successor is ${succ.key}`);
+    await sleep(getSpeed());
+    renderCode('remove', L.remove.copy);
+    node.key=succ.key;
+    render({visited:path, active:node, found:succ});
+    log(`  copy ${succ.key} up, then remove ${succ.key} from the right subtree`);
+    await sleep(getSpeed());
+    renderCode('remove', L.remove.recurse);
+    await removeA(node.right,succ.key,node,'R',path);
+  }
+  if(noChange) return node;
+  updateH(node);
+  renderCode('remove', L.remove.update);
+  render({visited:path, active:node});
+  log(`  back at ${node.key}: height ${node.h}, balance ${fmt(bf(node))}`);
+  await sleep(getSpeed());
+  return await rebalanceA(node,parent,side,'remove');
+}
+
+async function animatedDelete(val){
+  setBusy(true);
+  log(`Delete ${val}`,'step');
+  noChange=false;
+  const before=rotations;
+  await removeA(root,val,null,null,[]);
+  draw();
+  if(!noChange){
+    const r=rotations-before;
+    log(`  removed ${val}` + (r?` (${r} rotation${r>1?'s':''})`:' (no rotation needed)'),'result');
+  }
+  setBusy(false);
+}
+
+/* ---------------- Search, traversals, height ---------------- */
+async function animatedSearch(val){
+  setBusy(true);
+  log(`Search for ${val}`,'step');
+  const visited=[]; let cur=root;
+  renderCode('search', L.search.base);
+  while(cur){
+    visited.push(cur);
+    render({visited, active:cur});
+    await sleep(getSpeed());
+    if(val===cur.key){
+      renderCode('search', L.search.hit);
+      render({visited, found:cur});
+      log(`  found ${val} after ${visited.length} comparison${visited.length>1?'s':''}`,'result');
+      setBusy(false); return;
+    } else if(val<cur.key){ renderCode('search', L.search.less); cur=cur.left; }
+    else { renderCode('search', L.search.greater); cur=cur.right; }
+  }
+  render({visited});
+  log(`  ${val} not found`,'err');
+  setBusy(false);
+}
+
+async function animatedTraversal(kind){
+  setBusy(true);
+  log(`${kind[0].toUpperCase()+kind.slice(1)} traversal`,'step');
+  const order=[], seen=[];
+  const m=L[kind];
+  async function visit(n){
+    if(n===null){ renderCode(kind,m.base); return; }
+    async function doVisit(){
+      renderCode(kind,m.visit); order.push(n.key); seen.push(n);
+      render({visited:seen.slice(), active:n}); await sleep(getSpeed()*0.8);
+    }
+    if(kind==='preorder') await doVisit();
+    renderCode(kind,m.left); await visit(n.left);
+    if(kind==='inorder') await doVisit();
+    renderCode(kind,m.right); await visit(n.right);
+    if(kind==='postorder') await doVisit();
+  }
+  await visit(root);
+  log(`  order: [${order.join(', ')}]`,'result');
+  render({visited:seen});
+  setBusy(false);
+}
+
+async function animatedHeight(){
+  setBusy(true);
+  renderCode('height', L.height.base);
+  await sleep(getSpeed()/2);
+  const n=countNodes(root);
+  if(!root){ log('Height = -1 (empty tree)','result'); setBusy(false); return; }
+  log(`Height = ${root.h}  (n = ${n}, best possible = ${Math.floor(Math.log2(n))}, worst-case plain BST = ${n-1})`,'result');
+  setBusy(false);
+}
+
+/* ---------------- Scenarios ---------------- */
+const SCENARIOS = {
+  ll:{label:'Left-Left case', base:[30,20], ops:[['insert',10]],
+      note:'Straight line leaning left: one right rotation fixes it.'},
+  rr:{label:'Right-Right case', base:[10,20], ops:[['insert',30]],
+      note:'Straight line leaning right: one left rotation fixes it.'},
+  lr:{label:'Left-Right case', base:[30,10], ops:[['insert',20]],
+      note:'Zig-zag: rotate the child left to make a straight line, then rotate right.'},
+  rl:{label:'Right-Left case', base:[10,30], ops:[['insert',20]],
+      note:'Zig-zag: rotate the child right to make a straight line, then rotate left.'},
+  asc:{label:'Sorted input 10 to 70', base:[], ops:[10,20,30,40,50,60,70].map(v=>['insert',v]),
+      note:'A plain BST built from this input would be a chain of height 6.'},
+  del:{label:'Delete causes rotation', base:[50,30,70,20,40,60,80,35,65], ops:[['delete',80]],
+      note:'Deleting shortened the right side of 70, so 70 became left heavy.'},
+  cascade:{label:'Delete cascades up', base:[25,70,50,80,35,65,60,45,75,30,85,90], ops:[['delete',45]],
+      note:'Unlike insert, one delete can require rotations at more than one level.'}
+};
+
+async function runScenario(key){
+  const s=SCENARIOS[key];
+  scenarioRunning=true; setBusy(true);
+  root=null;
+  s.base.forEach(v=>root=insertNode(root,v));
+  rotations=0;
+  draw();
+  log(`Scenario: ${s.label}`,'step');
+  if(s.base.length) log(`  starting tree built from [${s.base.join(', ')}]`);
+  await sleep(getSpeed()*1.3);
+  for(const [op,v] of s.ops){
+    if(op==='insert') await animatedInsert(v); else await animatedDelete(v);
+    await sleep(getSpeed()*0.5);
+  }
+  log(`  ${s.note}`,'case');
+  if(key==='asc') log(`  This AVL tree has height ${root.h}.`,'case');
+  scenarioRunning=false; setBusy(false);
+}
+
+/* ---------------- Wiring ---------------- */
+function getVal(){
+  const v=document.getElementById('valInput').value.trim();
+  if(v===''){ log('enter a value first','err'); return null; }
+  const n=Number(v);
+  if(!Number.isFinite(n)){ log('value must be numeric','err'); return null; }
+  return Math.trunc(n);
+}
+document.getElementById('btnInsert').onclick=()=>{ if(busy) return; const v=getVal(); if(v!==null) animatedInsert(v); };
+document.getElementById('btnDelete').onclick=()=>{ if(busy) return; const v=getVal(); if(v!==null) animatedDelete(v); };
+document.getElementById('btnSearch').onclick=()=>{ if(busy) return; const v=getVal(); if(v!==null) animatedSearch(v); };
+document.getElementById('btnInorder').onclick=()=>{ if(!busy) animatedTraversal('inorder'); };
+document.getElementById('btnPreorder').onclick=()=>{ if(!busy) animatedTraversal('preorder'); };
+document.getElementById('btnPostorder').onclick=()=>{ if(!busy) animatedTraversal('postorder'); };
+document.getElementById('btnHeight').onclick=()=>{ if(!busy) animatedHeight(); };
+document.getElementById('btnScenario').onclick=()=>{ if(!busy) runScenario(document.getElementById('scenario').value); };
+document.getElementById('btnClear').onclick=()=>{
+  if(busy) return;
+  root=null; rotations=0; draw(); log('tree cleared');
+};
+document.getElementById('btnRandom').onclick=()=>{
+  if(busy) return;
+  root=null;
+  const vals=new Set();
+  while(vals.size<12) vals.add(Math.floor(Math.random()*90)+10);
+  vals.forEach(v=>root=insertNode(root,v));
+  rotations=0;
+  draw();
+  log(`generated random AVL tree from [${[...vals].join(', ')}]`,'result');
+};
+document.getElementById('valInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter') document.getElementById('btnInsert').click();
+});
+
+// initial demo tree (same values as the BST demo)
+[50,30,70,20,40,60,80,35,65].forEach(v=>root=insertNode(root,v));
+renderCode('insert');
+draw();
+log('Demo tree loaded (same values as the BST demo).');
+log('Predict first: what happens if you insert 34? What about 36?','case');
+</script>
+</body>
+</html>
