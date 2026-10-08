@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSC 2180: Min-Heap Demo</title>
+<style>
+  :root {
+    --navy: #0b2545;
+    --navy-light: #15396b;
+    --navy-lighter: #1e4a86;
+    --gold: #d9a441;
+    --gold-dark: #b9842a;
+    --bg: #f4f6f9;
+    --card-bg: #ffffff;
+    --border: #dde3ea;
+    --text: #1f2933;
+    --muted: #5b6b7c;
+    --compare: #ffe6a7;
+    --compare-border: #e0a92b;
+    --swap: #ffb8b0;
+    --swap-border: #d9534f;
+    --settled: #bfe6c5;
+    --settled-border: #3a9150;
+    --fresh: #bcd8f5;
+    --fresh-border: #3b7dd8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    color: #fff;
+    padding: 18px 28px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 4px solid var(--gold);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.35rem;
+    letter-spacing: 0.02em;
+  }
+  header .subtitle {
+    font-size: 0.95rem;
+    color: #cdddf2;
+  }
+  header .tag {
+    font-size: 0.82rem;
+    color: #a9c3e6;
+  }
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 18px 22px 40px;
+  }
+  .controls {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(11,37,69,0.06);
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 14px;
+    border-right: 1px solid var(--border);
+  }
+  .control-group:last-child { border-right: none; }
+  .controls input[type=number] {
+    width: 70px;
+    padding: 7px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.05s ease, filter 0.1s ease;
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--navy-light); }
+  .btn-gold { background: var(--gold); color: #2b2206; }
+  .btn-gold:hover:not(:disabled) { background: var(--gold-dark); }
+  .btn-outline { background: #fff; color: var(--navy); border: 1px solid var(--navy); }
+  .btn-outline:hover:not(:disabled) { background: #eef3fa; }
+  .btn-muted { background: #e8edf3; color: var(--muted); }
+  .btn-muted:hover:not(:disabled) { background: #dde6f0; }
+
+  .status-bar {
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+  .status-bar b { color: var(--text); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 18px;
+  }
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(11,37,69,0.06);
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .card-title {
+    background: #eef3fa;
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-body { padding: 16px; }
+
+  /* Array state readout, in sync with the array view below it */
+  .array-text {
+    font-family: Consolas, Menlo, 'Courier New', monospace;
+    font-size: 0.92rem;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    background: #fafbfd;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .array-text b {
+    font-weight: 700;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    padding: 0 4px;
+  }
+
+  /* Array view */
+  #arrayView {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+    min-height: 90px;
+  }
+  .array-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .array-box {
+    width: 54px;
+    height: 54px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    background: #fafbfd;
+    transition: background 0.25s ease, border-color 0.25s ease, transform 0.15s ease;
+  }
+  .array-index {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: Consolas, Menlo, monospace;
+  }
+  .empty-note { color: var(--muted); font-size: 0.9rem; font-style: italic; }
+
+  .hl-compare { background: var(--compare); border-color: var(--compare-border); }
+  .hl-swap { background: var(--swap); border-color: var(--swap-border); transform: scale(1.06); }
+  .hl-settled { background: var(--settled); border-color: var(--settled-border); }
+  .hl-fresh { background: var(--fresh); border-color: var(--fresh-border); }
+
+  /* Tree view */
+  #treeWrap { width: 100%; overflow-x: auto; }
+  #treeSvg { display: block; }
+  .tree-node circle {
+    stroke-width: 2px;
+    transition: fill 0.25s ease, stroke 0.25s ease;
+  }
+  .tree-node text {
+    font-weight: 700;
+    font-size: 13px;
+    fill: var(--text);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .tree-edge { stroke: #c3cedb; stroke-width: 2px; }
+
+  /* Code panel */
+  #codePanel {
+    background: var(--navy);
+    color: #dce8fb;
+    font-family: Consolas, Menlo, 'Courier New', monospace;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    max-height: 420px;
+    overflow-y: auto;
+    border-radius: 0 0 10px 10px;
+  }
+  .code-line {
+    padding: 1px 16px;
+    white-space: pre;
+  }
+  .code-line .ln {
+    display: inline-block;
+    width: 26px;
+    color: #5f7aa3;
+    user-select: none;
+  }
+  .code-line.active {
+    background: var(--gold);
+    color: #2b2206;
+    font-weight: 700;
+  }
+  .code-line.active .ln { color: #5a4615; }
+
+  /* Log panel */
+  #logPanel {
+    max-height: 230px;
+    overflow-y: auto;
+    padding: 10px 16px;
+  }
+  #logPanel ol { margin: 0; padding-left: 20px; }
+  #logPanel li {
+    margin-bottom: 7px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+  #logPanel li.current { font-weight: 700; color: var(--navy); }
+
+  .step-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: #fafbfd;
+    flex-wrap: wrap;
+  }
+  .step-indicator { font-size: 0.85rem; color: var(--muted); margin-left: auto; }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 10px 16px 14px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; border: 2px solid; display: inline-block; }
+
+  .note {
+    font-size: 0.85rem;
+    color: var(--muted);
+    background: #eef3fa;
+    border-left: 4px solid var(--navy-lighter);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 16px;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 10px 0 30px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>CSC 2180: Data Structures</h1>
+    <div class="subtitle">Interactive Demo: Min-Heap, Array-Backed (pseudocode)</div>
+  </div>
+  <div class="tag">Portfolio 3A reference implementation</div>
+</header>
+
+<main>
+
+  <div class="note">
+    This is pseudocode, not C++, but it is the same Min-Heap you will build for Portfolio 3A: <code>A</code> stands in
+    for your <code>std::vector&lt;T&gt;</code>. <code>INSERT</code> grows <code>A</code> by one element and calls
+    <code>HEAPIFY-UP</code>; <code>EXTRACT-MIN</code> moves the last element of <code>A</code> into the root, shrinks
+    <code>A</code> by one, and calls <code>HEAPIFY-DOWN</code>. The array view and the tree view show the same data:
+    a heap is a tree, stored as an array, where node i's children live at 2i + 1 and 2i + 2.
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <input type="number" id="insertValue" placeholder="value">
+      <button class="btn-primary" id="btnInsert">Insert (step-by-step)</button>
+    </div>
+    <div class="control-group">
+      <button class="btn-primary" id="btnExtract">Extract Min (step-by-step)</button>
+      <button class="btn-outline" id="btnPeek">Peek</button>
+    </div>
+    <div class="control-group">
+      <button class="btn-gold" id="btnBuild">Build Random Heap (8 values)</button>
+    </div>
+    <div class="control-group" style="border-right:none;">
+      <button class="btn-muted" id="btnReset">Reset</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span>Size: <b id="statSize">0</b></span>
+    <span>Minimum (root): <b id="statMin">(empty)</b></span>
+    <span>Last operation: <b id="statOp">none yet</b></span>
+  </div>
+
+  <div class="grid">
+    <div class="col-left">
+      <div class="card">
+        <div class="card-title">Array view, A[0 .. size(A) minus 1]</div>
+        <div class="card-body">
+          <div id="arrayText" class="array-text">A = [ ]&nbsp;&nbsp;&nbsp;size(A) = 0</div>
+          <div id="arrayView"><span class="empty-note">Heap is empty. Insert a value to begin.</span></div>
+        </div>
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--fresh); border-color:var(--fresh-border);"></span>new / moved</span>
+          <span><span class="swatch" style="background:var(--compare); border-color:var(--compare-border);"></span>comparing</span>
+          <span><span class="swatch" style="background:var(--swap); border-color:var(--swap-border);"></span>swapping</span>
+          <span><span class="swatch" style="background:var(--settled); border-color:var(--settled-border);"></span>settled</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tree view, same data as the array above</div>
+        <div class="card-body">
+          <div id="treeWrap"><svg id="treeSvg" width="100%" height="220"></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="card">
+        <div class="card-title">Pseudocode, Min-Heap operations</div>
+        <div id="codePanel"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Operation log</div>
+        <div id="logPanel"><div class="empty-note">Choose an operation above to see it traced here, one line per step.</div></div>
+        <div class="step-controls">
+          <button class="btn-outline" id="btnPrev">&larr; Prev step</button>
+          <button class="btn-outline" id="btnNext">Next step &rarr;</button>
+          <button class="btn-muted" id="btnPlay">Play</button>
+          <span class="step-indicator" id="stepIndicator">No operation running</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    INSERT: O(log n) &nbsp;|&nbsp; EXTRACT-MIN: O(log n) &nbsp;|&nbsp; PEEK: O(1) &nbsp;|&nbsp;
+    CSC 2180 Data Structures, offline demo file, no internet connection required
+  </footer>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Pseudocode listing (0-indexed; displayed as 1-indexed) ----------
+  // A is the array that stores the heap (your std::vector<T> in Portfolio 3A).
+  const codeLines = [
+    "PARENT(i):  return (i - 1) / 2",
+    "LEFT(i):    return 2i + 1",
+    "RIGHT(i):   return 2i + 2",
+    "",
+    "HEAPIFY-UP(A, i):",
+    "    while i > 0 and A[i] < A[PARENT(i)]:",
+    "        swap A[i] and A[PARENT(i)]",
+    "        i = PARENT(i)",
+    "",
+    "HEAPIFY-DOWN(A, i):",
+    "    smallest = i",
+    "    l = LEFT(i);  r = RIGHT(i)",
+    "    if l < size(A) and A[l] < A[smallest]:  smallest = l",
+    "    if r < size(A) and A[r] < A[smallest]:  smallest = r",
+    "    if smallest != i:",
+    "        swap A[i] and A[smallest]",
+    "        HEAPIFY-DOWN(A, smallest)",
+    "",
+    "INSERT(A, value):",
+    "    A.append(value)",
+    "    i = size(A) - 1",
+    "    HEAPIFY-UP(A, i)",
+    "",
+    "EXTRACT-MIN(A):",
+    "    min = A[0]",
+    "    A[0] = A[size(A) - 1]",
+    "    A.removeLast()",
+    "    if size(A) > 0:  HEAPIFY-DOWN(A, 0)",
+    "    return min",
+    "",
+    "PEEK(A):      return A[0]",
+    "IS-EMPTY(A):  return size(A) == 0"
+  ];
+  const LINE = {
+    insertCall: 18, pushBack: 19, assignI: 20, heapifyUpCall: 21,
+    whileCond: 5, swapUp: 6, moveUp: 7,
+    extractCall: 23, saveMin: 24, moveLast: 25, popBack: 26, heapifyDownCall: 27, returnMin: 28,
+    smallestInit: 10, computeLR: 11, compareLeft: 12, compareRight: 13, ifSmallest: 14, swapDown: 15, recurse: 16,
+    peek: 30, isEmpty: 31
+  };
+
+  function renderCode() {
+    const panel = document.getElementById("codePanel");
+    panel.innerHTML = codeLines.map((text, i) => {
+      const ln = String(i + 1).padStart(2, " ");
+      const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `<div class="code-line" data-line="${i}"><span class="ln">${ln}</span>${escaped || " "}</div>`;
+    }).join("");
+  }
+
+  function highlightCodeLine(lineIdx) {
+    const panel = document.getElementById("codePanel");
+    panel.querySelectorAll(".code-line").forEach(el => el.classList.remove("active"));
+    if (lineIdx === null || lineIdx === undefined) return;
+    const el = panel.querySelector(`.code-line[data-line="${lineIdx}"]`);
+    if (el) {
+      el.classList.add("active");
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  // ---------- Heap state ----------
+  let heap = [];           // the "real" committed state between operations
+  let steps = [];          // steps for the operation currently being walked through
+  let stepIndex = -1;
+  let playTimer = null;
+  let lastOpLabel = "none yet";
+
+  function snapFactory(dataRef, stepsArr) {
+    return function snap(codeLine, msg, highlights) {
+      stepsArr.push({
+        array: dataRef.slice(),
+        codeLine: codeLine,
+        msg: msg,
+        highlights: highlights || {}
+      });
+    };
+  }
+
+  // ---------- Simulations ----------
+  function simulateInsert(startArray, value) {
+    const data = startArray.slice();
+    const out = [];
+    const snap = snapFactory(data, out);
+
+    snap(LINE.insertCall, `INSERT(A, ${value}) called.`, {});
+    data.push(value);
+    let i = data.length - 1;
+    snap(LINE.pushBack, `A.append(${value}): the value is placed at the end of the array, at index ${i}.`, { fresh: [i] });
+    snap(LINE.assignI, `i = size(A) - 1 = ${i}.`, { fresh: [i] });
+    snap(LINE.heapifyUpCall, `HEAPIFY-UP(A, ${i}) begins: the new value may be smaller than its ancestors.`, { fresh: [i] });
+
+    while (true) {
+      if (i === 0) {
+        snap(LINE.whileCond, `i is 0, the root. There is nothing above it to compare to; loop ends.`, { settled: [0] });
+        break;
+      }
+      const p = Math.floor((i - 1) / 2);
+      snap(LINE.whileCond, `Compare A[${i}] = ${data[i]} to its parent A[${p}] (PARENT(${i}) = ${p}), value ${data[p]}.`, { compareA: i, compareB: p });
+      if (data[i] < data[p]) {
+        snap(LINE.swapUp, `${data[i]} is smaller than ${data[p]}, so swap A[${i}] and A[${p}].`, { swap: [i, p] });
+        const tmp = data[i]; data[i] = data[p]; data[p] = tmp;
+        snap(LINE.swapUp, `Swapped. A[${i}] = ${data[i]}, A[${p}] = ${data[p]}.`, { fresh: [p] });
+        snap(LINE.moveUp, `i = ${p}; keep climbing toward the root.`, { fresh: [p] });
+        i = p;
+      } else {
+        snap(LINE.whileCond, `${data[i]} is not smaller than ${data[p]}. Loop condition fails, heap property holds, value is settled.`, { settled: [i] });
+        break;
+      }
+    }
+    return out;
+  }
+
+  function simulateExtractMin(startArray) {
+    const data = startArray.slice();
+    const out = [];
+    const snap = snapFactory(data, out);
+
+    if (data.length === 0) {
+      snap(LINE.extractCall, `EXTRACT-MIN(A) called on an empty heap. There is nothing to remove.`, {});
+      return { steps: out, result: null };
+    }
+
+    snap(LINE.extractCall, `EXTRACT-MIN(A) called.`, {});
+    const minVal = data[0];
+    snap(LINE.saveMin, `min = A[0] = ${minVal}. This is the value the function will return.`, { compareA: 0 });
+
+    const last = data[data.length - 1];
+    data[0] = last;
+    snap(LINE.moveLast, `A[0] = A[size(A) - 1] = ${last}. The last element moves into the now-empty root slot.`, { fresh: [0] });
+    data.pop();
+    snap(LINE.popBack, `A.removeLast(): removes the duplicate now sitting at the end. size(A) is now ${data.length}.`, { fresh: data.length ? [0] : [] });
+
+    if (data.length === 0) {
+      snap(LINE.heapifyDownCall, `size(A) is 0, so HEAPIFY-DOWN is skipped.`, {});
+    } else {
+      snap(LINE.heapifyDownCall, `size(A) > 0, so call HEAPIFY-DOWN(A, 0) to sift the new root down to its place.`, { fresh: [0] });
+      let i = 0;
+      while (true) {
+        let smallest = i;
+        snap(LINE.smallestInit, `smallest = i = ${i} (assume the current node is smallest until shown otherwise).`, { compareA: i });
+        const l = 2 * i + 1, r = 2 * i + 2;
+        snap(LINE.computeLR, `l = LEFT(${i}) = ${l};  r = RIGHT(${i}) = ${r}.`, { compareA: i });
+
+        if (l < data.length) {
+          if (data[l] < data[smallest]) {
+            snap(LINE.compareLeft, `A[${l}] = ${data[l]} < A[${smallest}] = ${data[smallest]}, so smallest becomes ${l}.`, { compareA: l, compareB: smallest });
+            smallest = l;
+          } else {
+            snap(LINE.compareLeft, `A[${l}] = ${data[l]} is not smaller than A[${smallest}] = ${data[smallest]}; smallest stays ${smallest}.`, { compareA: l, compareB: smallest });
+          }
+        } else {
+          snap(LINE.compareLeft, `No left child, index ${l} is out of range (l >= size(A)). Skip.`, { compareA: i });
+        }
+
+        if (r < data.length) {
+          if (data[r] < data[smallest]) {
+            snap(LINE.compareRight, `A[${r}] = ${data[r]} < A[${smallest}] = ${data[smallest]}, so smallest becomes ${r}.`, { compareA: r, compareB: smallest });
+            smallest = r;
+          } else {
+            snap(LINE.compareRight, `A[${r}] = ${data[r]} is not smaller than A[${smallest}] = ${data[smallest]}; smallest stays ${smallest}.`, { compareA: r, compareB: smallest });
+          }
+        } else {
+          snap(LINE.compareRight, `No right child, index ${r} is out of range (r >= size(A)). Skip.`, { compareA: smallest });
+        }
+
+        if (smallest !== i) {
+          snap(LINE.ifSmallest, `smallest (${smallest}) is not i (${i}), so swap A[${i}] and A[${smallest}].`, { swap: [i, smallest] });
+          const tmp = data[i]; data[i] = data[smallest]; data[smallest] = tmp;
+          snap(LINE.swapDown, `Swapped. A[${i}] = ${data[i]}, A[${smallest}] = ${data[smallest]}.`, { fresh: [smallest] });
+          snap(LINE.recurse, `HEAPIFY-DOWN(A, ${smallest}) recurses one level down.`, { fresh: [smallest] });
+          i = smallest;
+        } else {
+          snap(LINE.ifSmallest, `smallest (${smallest}) equals i (${i}). Heap property holds here; recursion stops.`, { settled: [i] });
+          break;
+        }
+      }
+    }
+
+    snap(LINE.returnMin, `return min (${minVal}).`, { settled: data.length ? [0] : [] });
+    return { steps: out, result: minVal };
+  }
+
+  // ---------- Tree layout (in-order x assignment, avoids overlap) ----------
+  function layoutTree(n) {
+    const xPos = new Array(n), depth = new Array(n);
+    let counter = 0;
+    function visit(i, d) {
+      if (i >= n) return;
+      visit(2 * i + 1, d + 1);
+      xPos[i] = counter++;
+      depth[i] = d;
+      visit(2 * i + 2, d + 1);
+    }
+    visit(0, 0);
+    return { xPos, depth, slots: counter };
+  }
+
+  // ---------- Rendering ----------
+  function classifyIndex(idx, hl) {
+    if (!hl) return "";
+    if (hl.swap && hl.swap.includes(idx)) return "hl-swap";
+    if (hl.settled && hl.settled.includes(idx)) return "hl-settled";
+    if (hl.fresh && hl.fresh.includes(idx)) return "hl-fresh";
+    if (hl.compareA === idx || hl.compareB === idx) return "hl-compare";
+    return "";
+  }
+
+  function renderArray(arr, hl) {
+    const el = document.getElementById("arrayView");
+    if (!arr.length) {
+      el.innerHTML = '<span class="empty-note">Heap is empty. Insert a value to begin.</span>';
+      return;
+    }
+    el.innerHTML = arr.map((v, i) => {
+      const cls = classifyIndex(i, hl);
+      return `<div class="array-slot">
+                <div class="array-box ${cls}">${v}</div>
+                <div class="array-index">[${i}]</div>
+              </div>`;
+    }).join("");
+  }
+
+  // The literal array, A = [ ... ], is what "the array that stores the heap"
+  // actually looks like at this step: same highlight colors as the boxes
+  // below, so the two views read as one picture, not two separate ones.
+  function renderArrayText(arr, hl) {
+    const el = document.getElementById("arrayText");
+    if (!arr.length) {
+      el.textContent = "A = [ ]    size(A) = 0";
+      return;
+    }
+    const parts = arr.map((v, i) => {
+      const cls = classifyIndex(i, hl);
+      return cls ? `<b class="${cls}">${v}</b>` : `${v}`;
+    });
+    el.innerHTML = `A = [ ${parts.join(", ")} ]&nbsp;&nbsp;&nbsp;size(A) = ${arr.length}`;
+  }
+
+  function renderTree(arr, hl) {
+    const svg = document.getElementById("treeSvg");
+    const n = arr.length;
+    if (!n) {
+      svg.innerHTML = "";
+      svg.setAttribute("height", 60);
+      return;
+    }
+    const { xPos, depth, slots } = layoutTree(n);
+    const wrapWidth = document.getElementById("treeWrap").clientWidth || 600;
+    const xSpacing = Math.max(46, Math.min(80, Math.floor((wrapWidth - 60) / Math.max(1, slots))));
+    const ySpacing = 62;
+    const margin = 34;
+    const maxDepth = Math.max(...depth);
+    const height = margin * 2 + maxDepth * ySpacing + 20;
+    svg.setAttribute("height", height);
+    svg.setAttribute("width", Math.max(wrapWidth, margin * 2 + slots * xSpacing));
+
+    function px(i) { return margin + xPos[i] * xSpacing + xSpacing / 2; }
+    function py(i) { return margin + depth[i] * ySpacing; }
+
+    let edges = "";
+    for (let i = 0; i < n; i++) {
+      const l = 2 * i + 1, r = 2 * i + 2;
+      if (l < n) edges += `<line class="tree-edge" x1="${px(i)}" y1="${py(i)}" x2="${px(l)}" y2="${py(l)}"/>`;
+      if (r < n) edges += `<line class="tree-edge" x1="${px(i)}" y1="${py(i)}" x2="${px(r)}" y2="${py(r)}"/>`;
+    }
+
+    const fillFor = {
+      "": "#fafbfd", "hl-compare": "var(--compare)", "hl-swap": "var(--swap)",
+      "hl-settled": "var(--settled)", "hl-fresh": "var(--fresh)"
+    };
+    const strokeFor = {
+      "": "#c3cedb", "hl-compare": "var(--compare-border)", "hl-swap": "var(--swap-border)",
+      "hl-settled": "var(--settled-border)", "hl-fresh": "var(--fresh-border)"
+    };
+
+    let nodes = "";
+    for (let i = 0; i < n; i++) {
+      const cls = classifyIndex(i, hl);
+      nodes += `<g class="tree-node">
+          <circle cx="${px(i)}" cy="${py(i)}" r="19" fill="${fillFor[cls]}" stroke="${strokeFor[cls]}"/>
+          <text x="${px(i)}" y="${py(i)}">${arr[i]}</text>
+        </g>`;
+    }
+    svg.innerHTML = edges + nodes;
+  }
+
+  function renderLog(stepsArr, idx) {
+    const el = document.getElementById("logPanel");
+    if (!stepsArr.length || idx < 0) {
+      el.innerHTML = '<div class="empty-note">Choose an operation above to see it traced here, one line per step.</div>';
+      return;
+    }
+    const items = stepsArr.slice(0, idx + 1).map((s, i) => {
+      const cls = i === idx ? "current" : "";
+      return `<li class="${cls}">${s.msg}</li>`;
+    }).join("");
+    el.innerHTML = `<ol start="1">${items}</ol>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function renderStatus(arr) {
+    document.getElementById("statSize").textContent = arr.length;
+    document.getElementById("statMin").textContent = arr.length ? arr[0] : "(empty)";
+    document.getElementById("statOp").textContent = lastOpLabel;
+  }
+
+  function renderStepControls() {
+    const total = steps.length;
+    const atStart = stepIndex <= 0;
+    const atEnd = stepIndex >= total - 1;
+    document.getElementById("btnPrev").disabled = total === 0 || atStart;
+    document.getElementById("btnNext").disabled = total === 0 || atEnd;
+    document.getElementById("btnPlay").disabled = total === 0 || atEnd;
+    document.getElementById("stepIndicator").textContent =
+      total === 0 ? "No operation running" : `Step ${stepIndex + 1} of ${total}`;
+  }
+
+  function renderCurrentStep() {
+    if (stepIndex < 0 || !steps.length) {
+      renderArrayText(heap, {});
+      renderArray(heap, {});
+      renderTree(heap, {});
+      highlightCodeLine(null);
+      renderLog([], -1);
+      renderStepControls();
+      renderStatus(heap);
+      return;
+    }
+    const s = steps[stepIndex];
+    renderArrayText(s.array, s.highlights);
+    renderArray(s.array, s.highlights);
+    renderTree(s.array, s.highlights);
+    highlightCodeLine(s.codeLine);
+    renderLog(steps, stepIndex);
+    renderStepControls();
+    // The status bar always matches whatever step is currently on screen,
+    // not a jump-ahead to the operation's final result, so narrating a
+    // walkthrough never shows students the answer before they get there.
+    renderStatus(s.array);
+  }
+
+  function startOperation(newSteps, opLabel, commitArray) {
+    stopPlay();
+    steps = newSteps;
+    stepIndex = 0;
+    lastOpLabel = opLabel;
+    renderCurrentStep();
+    // Commit the final state once the operation is defined, so Insert/Extract
+    // immediately after Build or another op works from the right array.
+    // The status bar itself is driven by renderCurrentStep above, not by
+    // this committed value, so it stays in sync with the step on screen.
+    heap = commitArray;
+  }
+
+  function stopPlay() {
+    if (playTimer) { clearInterval(playTimer); playTimer = null; }
+    document.getElementById("btnPlay").textContent = "Play";
+  }
+
+  // ---------- Controls ----------
+  document.getElementById("btnInsert").addEventListener("click", () => {
+    const input = document.getElementById("insertValue");
+    let value = parseInt(input.value, 10);
+    if (isNaN(value)) value = Math.floor(Math.random() * 90) + 10;
+    const newSteps = simulateInsert(heap, value);
+    const finalArray = newSteps[newSteps.length - 1].array;
+    startOperation(newSteps, `INSERT(A, ${value})`, finalArray);
+    input.value = "";
+  });
+
+  document.getElementById("btnExtract").addEventListener("click", () => {
+    if (!heap.length) return;
+    const { steps: newSteps, result } = simulateExtractMin(heap);
+    const finalArray = newSteps[newSteps.length - 1].array;
+    startOperation(newSteps, `EXTRACT-MIN(A) returned ${result}`, finalArray);
+  });
+
+  document.getElementById("btnPeek").addEventListener("click", () => {
+    stopPlay();
+    if (!heap.length) {
+      steps = [{ array: [], codeLine: LINE.peek, msg: "PEEK(A) on an empty heap. There is nothing at A[0].", highlights: {} }];
+    } else {
+      steps = [{ array: heap.slice(), codeLine: LINE.peek, msg: `PEEK(A) returns A[0] = ${heap[0]}, the minimum value in the heap.`, highlights: { settled: [0] } }];
+    }
+    stepIndex = 0;
+    lastOpLabel = `PEEK(A)`;
+    renderCurrentStep();
+  });
+
+  document.getElementById("btnBuild").addEventListener("click", () => {
+    stopPlay();
+    let data = [];
+    const values = [];
+    for (let k = 0; k < 8; k++) {
+      const v = Math.floor(Math.random() * 90) + 10;
+      values.push(v);
+      const s = simulateInsert(data, v);
+      data = s[s.length - 1].array;
+    }
+    heap = data;
+    steps = [{ array: heap.slice(), codeLine: null, msg: `Built a heap by inserting: ${values.join(", ")}.`, highlights: {} }];
+    stepIndex = 0;
+    lastOpLabel = "build random heap";
+    renderCurrentStep();
+  });
+
+  document.getElementById("btnReset").addEventListener("click", () => {
+    stopPlay();
+    heap = [];
+    steps = [];
+    stepIndex = -1;
+    lastOpLabel = "reset";
+    renderCurrentStep();
+  });
+
+  document.getElementById("btnNext").addEventListener("click", () => {
+    if (stepIndex < steps.length - 1) {
+      stepIndex++;
+      renderCurrentStep();
+      if (stepIndex === steps.length - 1) {
+        heap = steps[stepIndex].array.slice();
+        stopPlay();
+      }
+    }
+  });
+
+  document.getElementById("btnPrev").addEventListener("click", () => {
+    stopPlay();
+    if (stepIndex > 0) {
+      stepIndex--;
+      renderCurrentStep();
+    }
+  });
+
+  document.getElementById("btnPlay").addEventListener("click", () => {
+    if (playTimer) { stopPlay(); return; }
+    document.getElementById("btnPlay").textContent = "Pause";
+    playTimer = setInterval(() => {
+      if (stepIndex < steps.length - 1) {
+        stepIndex++;
+        renderCurrentStep();
+        if (stepIndex === steps.length - 1) {
+          heap = steps[stepIndex].array.slice();
+          stopPlay();
+        }
+      } else {
+        stopPlay();
+      }
+    }, 1100);
+  });
+
+  document.getElementById("insertValue").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("btnInsert").click();
+  });
+
+  window.addEventListener("resize", () => {
+    if (stepIndex >= 0 && steps.length) renderTree(steps[stepIndex].array, steps[stepIndex].highlights);
+    else renderTree(heap, {});
+  });
+
+  // ---------- Init ----------
+  renderCode();
+  renderCurrentStep();
+})();
+</script>
+
+</body>
+</html>
