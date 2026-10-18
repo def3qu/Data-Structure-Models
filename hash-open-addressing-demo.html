@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Addressing Demo</title>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-2: #2F4A7A;
+    --gold: #C9A227;
+    --gold-soft: #F4EBCB;
+    --ink: #1F2937;
+    --muted: #6B7280;
+    --line: #D5DAE2;
+    --panel: #F3F5F8;
+    --green: #2E7D32;
+    --red: #B42318;
+    --red-soft: #FBE9E7;
+    --del: #C3C8D1;
+    --bg: #E9EDF2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.45 "Segoe UI", Calibri, system-ui, -apple-system, Arial, sans-serif;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font: 700 26px/1.2 Cambria, Georgia, serif; }
+  header .sub { color: var(--gold); font-weight: 600; font-size: 15px; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 430px;
+    gap: 16px;
+    padding: 16px 24px 24px;
+    max-width: 1600px; margin: 0 auto;
+  }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  .card { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .card + .card { margin-top: 14px; }
+  h2 { margin: 0 0 10px; font: 700 17px/1.2 Cambria, Georgia, serif; color: var(--navy); }
+
+  /* controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: flex-end; }
+  .group { display: flex; flex-direction: column; gap: 4px; }
+  .group > label, .lbl { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  select, input[type=number] {
+    font: inherit; font-size: 17px; padding: 6px 8px; border: 2px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  input[type=number] { width: 96px; font-family: Consolas, "Courier New", monospace; font-weight: 700; }
+  button {
+    font: inherit; font-weight: 700; font-size: 15px; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+    border: 2px solid var(--navy); background: var(--navy); color: #fff;
+  }
+  button.alt { background: #fff; color: var(--navy); }
+  button.gold { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+  button.danger { background: #fff; color: var(--red); border-color: var(--red); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--navy); }
+  .toggle.bug input { accent-color: var(--red); }
+  .toggle.bug { color: var(--red); }
+
+  /* formula strip */
+  .formula {
+    font-family: Consolas, "Courier New", monospace; font-size: 18px; font-weight: 700; color: var(--navy);
+    background: var(--panel); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;
+  }
+  .formula small { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-weight: 600; color: var(--muted); font-size: 13px; margin-left: 10px; }
+
+  /* table */
+  .table-wrap { padding-top: 26px; }
+  .slots { display: grid; gap: 6px; }
+  .slot { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .cell {
+    width: 100%; aspect-ratio: 1 / 1; max-height: 74px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--navy); border-radius: 6px; background: #fff;
+    font: 700 22px/1 Consolas, "Courier New", monospace; color: var(--navy);
+    transition: background .2s, border-color .2s, box-shadow .2s;
+  }
+  .cell.del { background: var(--del); color: #374151; font-style: italic; font-size: 14px; }
+  .cell.m-probe { border-color: var(--gold); border-width: 4px; }
+  .cell.m-cur { border-color: var(--gold); border-width: 4px; box-shadow: 0 0 0 4px rgba(201,162,39,.35); }
+  .cell.m-place { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+  .cell.m-found { background: var(--green); border-color: var(--green); color: #fff; }
+  .cell.m-stop { border-color: var(--green); border-width: 4px; }
+  .cell.m-miss { border-color: var(--red); border-width: 4px; }
+  .cell.m-free { outline: 3px dashed var(--red); outline-offset: 2px; }
+  .cell.lost { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .idx { font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 600; }
+  .badge {
+    position: absolute; top: -24px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px;
+    background: var(--navy); color: #fff; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .badge.green { background: var(--green); }
+  .badge.red { background: var(--red); }
+  .tag { font-size: 11px; font-weight: 700; margin-top: 1px; min-height: 15px; }
+  .tag.free { color: var(--red); }
+  .tag.lost { color: var(--red); }
+  .tag.home { color: var(--navy-2); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 16px; height: 16px; border-radius: 3px; border: 2px solid var(--navy); background: #fff; display: inline-block; }
+
+  /* narration */
+  .narr {
+    margin-top: 12px; border-radius: 8px; padding: 12px 14px; min-height: 56px;
+    background: var(--gold-soft); border: 1px solid var(--gold);
+    font-size: 19px; font-weight: 600; color: var(--navy);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .narr .step { font: 700 13px/1 Consolas, monospace; background: var(--navy); color: #fff; padding: 4px 7px; border-radius: 4px; white-space: nowrap; }
+  .narr.bad { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .narr.good { background: #E8F3E9; border-color: var(--green); color: var(--green); }
+  .runbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .runbar input[type=range] { width: 150px; accent-color: var(--navy); }
+
+  /* probe sequence */
+  .seq { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip {
+    font: 700 15px/1 Consolas, "Courier New", monospace; padding: 6px 8px; border-radius: 6px;
+    background: var(--panel); color: var(--navy); border: 1px solid var(--line); position: relative;
+  }
+  .chip i { font-style: normal; font-size: 10px; color: var(--muted); position: absolute; top: -14px; left: 0; right: 0; text-align: center; }
+  .chip.rep { opacity: .35; text-decoration: line-through; }
+  .seq-note { font-size: 14px; color: var(--muted); margin-top: 10px; }
+  .seq-note b { color: var(--navy); }
+  .seq-note.warn b { color: var(--red); }
+  .seq-wrap { padding-top: 14px; }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .stat { background: var(--panel); border-radius: 8px; padding: 8px 10px; }
+  .stat .v { font: 700 26px/1.1 Cambria, Georgia, serif; color: var(--navy); }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .meter { position: relative; height: 22px; background: var(--panel); border-radius: 6px; margin-top: 12px; overflow: visible; }
+  .meter .n { position: absolute; left: 0; top: 0; bottom: 0; background: var(--navy); border-radius: 6px 0 0 6px; transition: width .3s; }
+  .meter .d { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, var(--del), var(--del) 5px, #AEB4BF 5px, #AEB4BF 10px); transition: left .3s, width .3s; }
+  .meter .thr { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--red); }
+  .meter .thr span { position: absolute; top: -18px; left: -40px; width: 80px; text-align: center; font-size: 11px; font-weight: 700; color: var(--red); }
+  .meter-cap { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .warn-line { margin-top: 10px; font-size: 15px; font-weight: 600; min-height: 22px; }
+  .warn-line.bad { color: var(--red); }
+  .warn-line.ok { color: var(--green); }
+  .expect { margin-top: 6px; font-size: 14px; color: var(--ink); }
+  .expect code { font-family: Consolas, "Courier New", monospace; font-weight: 700; color: var(--navy); }
+
+  /* code panel */
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tab { font-size: 13px; padding: 5px 9px; background: #fff; color: var(--navy); border: 2px solid var(--line); }
+  .tab.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .code {
+    background: var(--navy); color: #DCE3EE; border-radius: 8px; padding: 10px 0;
+    font: 14.5px/1.55 Consolas, "Courier New", monospace; overflow-x: auto;
+  }
+  .code .ln { display: flex; padding: 0 12px; white-space: pre; border-left: 4px solid transparent; }
+  .code .ln .no { width: 28px; color: #7D8BA6; flex: none; text-align: right; margin-right: 12px; }
+  .code .ln.hdr { color: var(--gold); font-weight: 700; }
+  .code .ln.on { background: rgba(201,162,39,.28); border-left-color: var(--gold); color: #fff; font-weight: 700; }
+  .code .ln.bug { color: #FF9C8F; }
+  .code-note { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+  /* log */
+  .log { max-height: 280px; overflow-y: auto; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; }
+  .log div { padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .log div:last-child { border-bottom: 0; }
+  .log .op { font-family: Consolas, "Courier New", monospace; font-weight: 700; color: var(--navy); }
+  .log .bad { color: var(--red); }
+  .log .good { color: var(--green); }
+  .log .info { color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 18px; }
+  .kbd { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hash Tables: Open Addressing</h1>
+  <span class="sub">CSC 2180 Data Structures &nbsp;|&nbsp; Unit 3 &nbsp;|&nbsp; Day 26</span>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <div class="controls">
+        <div class="group">
+          <label for="strat">Probing</label>
+          <select id="strat">
+            <option value="linear">Linear probing</option>
+            <option value="quad">Quadratic probing</option>
+            <option value="double">Double hashing</option>
+          </select>
+        </div>
+        <div class="group">
+          <label for="msel">Table size m</label>
+          <select id="msel">
+            <option>7</option><option selected>11</option><option>13</option><option>17</option><option>19</option><option>23</option>
+          </select>
+        </div>
+        <div class="group">
+          <label for="key">Key k</label>
+          <div class="row">
+            <input id="key" type="number" min="0" max="9999" value="22" aria-label="Key">
+            <button id="bIns">Insert</button>
+            <button id="bSea" class="alt">Search</button>
+            <button id="bDel" class="danger">Delete</button>
+          </div>
+        </div>
+        <div class="group">
+          <span class="lbl">Presets</span>
+          <div class="row">
+            <button id="bTut" class="gold" title="m = 11; inserts 22, 1, 13, 11, 24, 33">Tutorial keys</button>
+            <button id="bRand" class="alt">Random keys</button>
+            <button id="bClr" class="alt">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px; gap:18px;">
+        <label class="toggle bug" title="Delete sets the slot back to EMPTY instead of DELETED, to show why that breaks searches">
+          <input type="checkbox" id="broken"> Broken delete (set slot to EMPTY)
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="formula" id="formula"></div>
+      <div class="table-wrap"><div class="slots" id="slots"></div></div>
+      <div class="legend">
+        <span><i class="sw" style="border-color:var(--gold);border-width:3px"></i>probed</span>
+        <span><i class="sw" style="background:var(--gold);border-color:var(--gold)"></i>key placed</span>
+        <span><i class="sw" style="border-color:var(--green);border-width:3px"></i>EMPTY: search stops</span>
+        <span><i class="sw" style="background:var(--green);border-color:var(--green)"></i>found</span>
+        <span><i class="sw" style="background:var(--del);border-color:var(--del)"></i>DELETED (tombstone)</span>
+        <span><i class="sw" style="outline:2px dashed var(--red);outline-offset:1px"></i>remembered free slot</span>
+        <span><i class="sw" style="background:var(--red-soft);border-color:var(--red)"></i>key no search can reach</span>
+      </div>
+      <div class="narr" id="narr"><span class="step" id="narrStep">ready</span><span id="narrText">Pick a probing strategy, type a key, and press Insert.</span></div>
+      <div class="runbar">
+        <label class="toggle"><input type="checkbox" id="auto" checked> Auto-play</label>
+        <span class="kbd">speed</span>
+        <input type="range" id="speed" min="80" max="1600" step="20" value="650" aria-label="Animation delay">
+        <button id="bNext" class="alt" disabled>Next step &#9654;</button>
+        <button id="bFin" class="alt" disabled>Finish</button>
+        <span class="kbd">Enter = insert &nbsp; N or &rarr; = next step</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 id="seqTitle">Probe sequence</h2>
+      <div class="seq-wrap"><div class="seq" id="seq"></div></div>
+      <div class="seq-note" id="seqNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Load factor</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="sN">0</div><div class="k">n: real keys</div></div>
+        <div class="stat"><div class="v" id="sD">0</div><div class="k">d: tombstones</div></div>
+        <div class="stat"><div class="v" id="sA">0.00</div><div class="k">&alpha; = n / m</div></div>
+        <div class="stat"><div class="v" id="sAD">0.00</div><div class="k">(n + d) / m</div></div>
+        <div class="stat"><div class="v" id="sP">-</div><div class="k">probes, last operation</div></div>
+      </div>
+      <div class="meter" id="meter"><div class="n" id="mN"></div><div class="d" id="mD"></div><div class="thr" id="mT"><span id="mTl"></span></div></div>
+      <div class="meter-cap"><span>0</span><span>navy: keys &nbsp; striped: tombstones</span><span>m</span></div>
+      <div class="warn-line" id="warn"></div>
+      <div class="expect" id="expect"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="bRe" class="alt">Rehash to nextPrime(2m)</button>
+        <button id="bSame" class="alt">Rebuild same size</button>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>Pseudocode</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code" id="code"></div>
+      <div class="code-note" id="codeNote"></div>
+    </div>
+    <div class="card">
+      <h2>Log</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </aside>
+</main>
+<footer>CSC 2180 Data Structures &middot; UVA Wise &middot; Pseudocode follows the Day 26 tutorial</footer>
+
+<script>
+(() => {
+  "use strict";
+  const E = 0, O = 1, D = 2;
+  const $ = (id) => document.getElementById(id);
+
+  // ---------------- pseudocode (matches the Day 26 tutorial) ----------------
+  const PROCS = {
+    insert: ["HASH-INSERT(T, k)",
+      "i = 0",
+      "free = NIL",
+      "repeat",
+      "    j = h(k, i)",
+      "    if T[j] == k",
+      "        return j    // present",
+      "    if T[j] == DELETED and free == NIL",
+      "        free = j",
+      "    i = i + 1",
+      "until T[j] == EMPTY or i == m",
+      "if T[j] == EMPTY and free == NIL",
+      "    free = j",
+      "if free == NIL",
+      "    error \"hash table overflow\"",
+      "T[free] = k",
+      "return free"],
+    search: ["HASH-SEARCH(T, k)",
+      "i = 0",
+      "repeat",
+      "    j = h(k, i)",
+      "    if T[j] == k",
+      "        return j    // found",
+      "    i = i + 1",
+      "until T[j] == EMPTY or i == m",
+      "return NIL          // not found"],
+    delete: ["HASH-DELETE(T, k)",
+      "j = HASH-SEARCH(T, k)",
+      "if j == NIL",
+      "    return FALSE",
+      "T[j] = DELETED",
+      "return TRUE"],
+    rehash: ["REHASH(T, newM)",
+      "old = T",
+      "oldM = m",
+      "allocate a new array T with newM slots",
+      "for j = 0 to newM - 1",
+      "    T[j] = EMPTY",
+      "m = newM",
+      "n = 0",
+      "d = 0",
+      "for j = 0 to oldM - 1",
+      "    if old[j] != EMPTY and old[j] != DELETED",
+      "        HASH-INSERT(T, old[j])",
+      "        n = n + 1",
+      "free old"],
+  };
+  const PROC_NAMES = { insert: "HASH-INSERT", search: "HASH-SEARCH", delete: "HASH-DELETE", rehash: "REHASH" };
+
+  // ---------------- state ----------------
+  let m = 11, strat = "linear";
+  let T = [];
+  let n = 0, d = 0;
+  let order = [];          // keys in insertion order, for rebuilds
+  let proc = "insert", activeLine = -1;
+  let vis = { marks: {}, badges: {}, tags: {}, cur: -1 };
+  let gen = null, timer = null, busy = false, summary = null, lastProbes = null;
+
+  function blank(size) { const a = []; for (let i = 0; i < size; i++) a.push({ s: E, k: null }); return a; }
+  T = blank(m);
+
+  // ---------------- hashing ----------------
+  const h1 = (k) => k % m;
+  const h2 = (k) => 1 + (k % (m - 1));
+  function h(k, i) {
+    if (strat === "linear") return (h1(k) + i) % m;
+    if (strat === "quad") return (h1(k) + i * i) % m;
+    return (h1(k) + i * h2(k)) % m;
+  }
+  function hWork(k, i) {
+    if (strat === "linear") return `(${h1(k)} + ${i}) mod ${m}`;
+    if (strat === "quad") return `(${h1(k)} + ${i}²) mod ${m}`;
+    return `(${h1(k)} + ${i}·${h2(k)}) mod ${m}`;
+  }
+  function isPrime(x) { if (x < 2) return false; for (let i = 2; i * i <= x; i++) if (x % i === 0) return false; return true; }
+  function nextPrime(x) { while (!isPrime(x)) x++; return x; }
+  const threshold = () => (strat === "quad" ? 0.5 : 0.7);
+  const slotName = (j) => T[j].s === E ? "EMPTY" : T[j].s === D ? "DELETED" : String(T[j].k);
+
+  // ---------------- silent (non-animated) operations ----------------
+  function silentSearch(k) {
+    for (let i = 0; i < m; i++) {
+      const j = h(k, i);
+      if (T[j].s === O && T[j].k === k) return j;
+      if (T[j].s === E) return null;
+    }
+    return null;
+  }
+  function silentInsert(k) {
+    let free = null, j = -1, i = 0;
+    do {
+      j = h(k, i);
+      if (T[j].s === O && T[j].k === k) return "dup";
+      if (T[j].s === D && free === null) free = j;
+      i++;
+    } while (!(T[j].s === E || i === m));
+    if (T[j].s === E && free === null) free = j;
+    if (free === null) return null;
+    if (T[free].s === D) d--;
+    T[free] = { s: O, k }; n++;
+    return free;
+  }
+  function freeCount() { return T.filter((c) => c.s !== O).length; }
+
+  // ---------------- visual helpers ----------------
+  function resetVis() { vis = { marks: {}, badges: {}, tags: {}, cur: -1 }; }
+  function probe(j, i) {
+    for (const key in vis.marks) if (vis.marks[key] === "cur") vis.marks[key] = "probe";
+    vis.marks[j] = "cur"; vis.badges[j] = { t: i + 1, c: "" }; vis.cur = j;
+  }
+  const step = (line, msg, tone) => ({ line, msg, tone });
+
+  // ---------------- animated operations ----------------
+  function* searchCore(k, ln, opLabel) {
+    let i = 0;
+    yield step(ln(1), `${opLabel}: i = 0`);
+    let j;
+    while (true) {
+      yield step(ln(2), "repeat");
+      j = h(k, i); probe(j, i);
+      yield step(ln(3), `j = h(${k}, ${i}) = ${hWork(k, i)} = ${j}`);
+      const hit = T[j].s === O && T[j].k === k;
+      yield step(ln(4), `T[${j}] is ${slotName(j)}: ${hit ? "that is " + k : "not " + k}`);
+      if (hit) {
+        vis.marks[j] = "found"; vis.badges[j].c = "green";
+        yield step(ln(5), `Found ${k} in slot ${j} after ${i + 1} probe${i ? "s" : ""}.`, "good");
+        return { j, probes: i + 1 };
+      }
+      i++;
+      yield step(ln(6), `i = ${i}`);
+      if (T[j].s === E) {
+        vis.marks[j] = "stop"; vis.badges[j].c = "green";
+        yield step(ln(7), `T[${j}] is EMPTY, so ${k} cannot be further along. Stop.`);
+        break;
+      }
+      if (i === m) { yield step(ln(7), `i == m: all ${m} probes used. Stop.`); break; }
+      yield step(ln(7), T[j].s === D ? `T[${j}] is DELETED: a tombstone means keep looking.` : `T[${j}] holds another key: keep going.`);
+    }
+    return { j: null, probes: i };
+  }
+
+  function* insertGen(k) {
+    let i = 0, free = null, j;
+    yield step(1, `insert ${k}: i = 0`);
+    yield step(2, "free = NIL");
+    do {
+      yield step(3, "repeat");
+      j = h(k, i); probe(j, i);
+      yield step(4, `j = h(${k}, ${i}) = ${hWork(k, i)} = ${j}`);
+      const hit = T[j].s === O && T[j].k === k;
+      yield step(5, `T[${j}] is ${slotName(j)}: ${hit ? "that is " + k : "not " + k}`);
+      if (hit) {
+        vis.marks[j] = "found"; vis.badges[j].c = "green";
+        yield step(6, `${k} is already in slot ${j}. Nothing to insert.`, "good");
+        lastProbes = i + 1;
+        summary = { cls: "info", text: `insert ${k}: already present in slot ${j} (${i + 1} probe${i ? "s" : ""})` };
+        return;
+      }
+      const isDel = T[j].s === D;
+      yield step(7, isDel ? (free === null ? `T[${j}] is DELETED and free is NIL` : `T[${j}] is DELETED, but free is already ${free}`) : `T[${j}] is not DELETED`);
+      if (isDel && free === null) {
+        free = j; vis.tags[j] = "free";
+        yield step(8, `free = ${j}. Remember it, but keep searching: ${k} might be further along.`);
+      }
+      i++;
+      yield step(9, `i = ${i}`);
+      if (T[j].s === E) { vis.marks[j] = "stop"; vis.badges[j].c = "green"; }
+      yield step(10, T[j].s === E ? `T[${j}] is EMPTY: ${k} is not in the table. Stop.` : i === m ? `i == m: every probe used. Stop.` : "keep going");
+    } while (!(T[j].s === E || i === m));
+    if (T[j].s === E && free === null) {
+      yield step(11, `T[${j}] is EMPTY and free is NIL`);
+      free = j; vis.tags[j] = "free";
+      yield step(12, `free = ${j}`);
+    } else {
+      yield step(11, free !== null ? `free is already ${free}` : `T[${j}] is not EMPTY and free is NIL`);
+    }
+    yield step(13, free === null ? "free == NIL" : `free = ${free}`);
+    lastProbes = i;
+    if (free === null) {
+      const fc = freeCount();
+      const extra = fc > 0 ? ` ${fc} slot${fc > 1 ? "s are" : " is"} free, but ${k}'s probe sequence never reaches ${fc > 1 ? "them" : "it"}.` : "";
+      yield step(14, `Hash table overflow.${extra}`, "bad");
+      summary = { cls: "bad", text: `insert ${k}: OVERFLOW after ${i} probes.${extra}` };
+      return;
+    }
+    const reused = T[free].s === D;
+    if (reused) d--;
+    T[free] = { s: O, k }; n++; order.push(k);
+    delete vis.tags[free];
+    vis.marks[free] = "place";
+    yield step(15, `T[${free}] = ${k}${reused ? " (reusing a tombstone)" : ""}`, "good");
+    const path = Object.keys(vis.badges).map(Number).sort((a, b) => vis.badges[a].t - vis.badges[b].t);
+    yield step(16, `return ${free}`, "good");
+    summary = { cls: "good", text: `insert ${k}: probed ${path.join(", ")} → slot ${free} (${i} probe${i > 1 ? "s" : ""})${reused ? ", reused a tombstone" : ""}` };
+  }
+
+  function* searchGen(k) {
+    const r = yield* searchCore(k, (x) => x, `search ${k}`);
+    if (r.j === null) {
+      yield step(8, `return NIL: ${k} is not in the table (${r.probes} probe${r.probes !== 1 ? "s" : ""}).`, "bad");
+      const lostHere = T.some((c) => c.s === O && c.k === k);
+      summary = { cls: "bad", text: `search ${k}: NIL after ${r.probes} probe${r.probes !== 1 ? "s" : ""}` + (lostHere ? ". WRONG: the key is in the table but unreachable." : "") };
+    } else {
+      summary = { cls: "good", text: `search ${k}: found in slot ${r.j} (${r.probes} probe${r.probes > 1 ? "s" : ""})` };
+    }
+    lastProbes = r.probes;
+  }
+
+  function* deleteGen(k) {
+    const broken = $("broken").checked;
+    const r = yield* searchCore(k, () => 1, `delete ${k}: j = HASH-SEARCH(T, ${k})`);
+    lastProbes = r.probes;
+    yield step(2, r.j === null ? "j == NIL" : `j = ${r.j}, not NIL`);
+    if (r.j === null) {
+      yield step(3, `return FALSE: ${k} was not in the table.`, "bad");
+      summary = { cls: "info", text: `delete ${k}: not found (${r.probes} probes)` };
+      return;
+    }
+    const j = r.j;
+    order.splice(order.indexOf(k), 1);
+    n--;
+    if (broken) {
+      T[j] = { s: E, k: null };
+      vis.marks[j] = "miss"; vis.badges[j].c = "red";
+      yield step(4, `T[${j}] = EMPTY. This is the bug: any key that probed past slot ${j} is now cut off.`, "bad");
+      const lost = T.filter((c) => c.s === O && silentSearch(c.k) === null).map((c) => c.k);
+      summary = { cls: "bad", text: `delete ${k}: slot ${j} set to EMPTY (broken)` + (lost.length ? `. Now unreachable: ${lost.join(", ")}` : ". No keys were cut off this time.") };
+    } else {
+      T[j] = { s: D, k: null }; d++;
+      vis.marks[j] = "probe";
+      yield step(4, `T[${j}] = DELETED. The tombstone tells later searches to keep going.`, "good");
+      summary = { cls: "good", text: `delete ${k}: slot ${j} marked DELETED (${r.probes} probe${r.probes > 1 ? "s" : ""})` };
+    }
+    yield step(5, "return TRUE", broken ? "bad" : "good");
+  }
+
+  // ---------------- runner ----------------
+  function setBusy(b) {
+    busy = b;
+    ["bIns", "bSea", "bDel", "bTut", "bRand", "bClr", "bRe", "bSame", "strat", "msel", "broken"].forEach((id) => ($(id).disabled = b));
+    $("bNext").disabled = !b || $("auto").checked;
+    $("bFin").disabled = !b;
+  }
+  function run(g, p) {
+    if (busy) return;
+    resetVis(); summary = null;
+    proc = p; activeLine = -1;
+    gen = g; setBusy(true);
+    renderCode();
+    tick();
+  }
+  function tick() {
+    clearTimeout(timer);
+    if (!gen) return;
+    const r = gen.next();
+    if (r.done) { finish(); return; }
+    applyStep(r.value);
+    if ($("auto").checked) timer = setTimeout(tick, +$("speed").value);
+  }
+  function applyStep(s) {
+    activeLine = s.line;
+    narrate(s.line ? `line ${s.line}` : PROC_NAMES[proc], s.msg, s.tone);
+    render();
+  }
+  function finishNow() {
+    clearTimeout(timer);
+    let r, lastStep = null;
+    while (gen && !(r = gen.next()).done) lastStep = r.value;
+    if (lastStep) applyStep(lastStep);
+    finish();
+  }
+  function finish() {
+    clearTimeout(timer);
+    gen = null;
+    if (summary) log(summary.text, summary.cls);
+    for (const key in vis.marks) if (vis.marks[key] === "cur") vis.marks[key] = "probe";
+    setBusy(false);
+    render();
+  }
+
+  // ---------------- rendering ----------------
+  function narrate(tag, text, tone) {
+    $("narrStep").textContent = tag;
+    $("narrText").textContent = text;
+    $("narr").className = "narr" + (tone === "bad" ? " bad" : tone === "good" ? " good" : "");
+  }
+  function renderFormula() {
+    let f, note;
+    if (strat === "linear") { f = "h(k, i) = (h'(k) + i) mod m"; note = "h'(k) = k mod " + m; }
+    else if (strat === "quad") { f = "h(k, i) = (h'(k) + i²) mod m"; note = "h'(k) = k mod " + m + "; keep α ≤ 1/2"; }
+    else { f = "h(k, i) = (h1(k) + i·h2(k)) mod m"; note = `h1(k) = k mod ${m}, h2(k) = 1 + (k mod ${m - 1})`; }
+    $("formula").innerHTML = "";
+    $("formula").append(document.createTextNode(f));
+    const s = document.createElement("small"); s.textContent = note; $("formula").append(s);
+  }
+  function render() {
+    const box = $("slots");
+    box.style.gridTemplateColumns = `repeat(${Math.min(m, 13)}, minmax(38px, 1fr))`;
+    box.style.rowGap = m > 13 ? "34px" : "6px";
+    box.innerHTML = "";
+    for (let j = 0; j < m; j++) {
+      const slot = document.createElement("div"); slot.className = "slot";
+      const cell = document.createElement("div"); cell.className = "cell";
+      const c = T[j];
+      let tag = "";
+      if (c.s === O) {
+        cell.textContent = c.k;
+        if (silentSearch(c.k) === null) { cell.classList.add("lost"); tag = "lost"; }
+      } else if (c.s === D) { cell.textContent = "DEL"; cell.classList.add("del"); }
+      const mk = vis.marks[j];
+      if (mk) cell.classList.add("m-" + mk);
+      if (vis.tags[j] === "free") { cell.classList.add("m-free"); tag = "free"; }
+      slot.append(cell);
+      if (vis.badges[j]) {
+        const b = document.createElement("div");
+        b.className = "badge " + vis.badges[j].c; b.textContent = vis.badges[j].t; slot.append(b);
+      }
+      const idx = document.createElement("div"); idx.className = "idx"; idx.textContent = j; slot.append(idx);
+      const t = document.createElement("div"); t.className = "tag " + tag;
+      t.textContent = tag === "free" ? "free" : tag === "lost" ? "unreachable" : "";
+      slot.append(t);
+      cell.setAttribute("aria-label", `slot ${j}: ${slotName(j)}`);
+      box.append(slot);
+    }
+    renderStats();
+    renderCode();
+    renderSeq();
+  }
+  function renderCode() {
+    const tabs = $("tabs"); tabs.innerHTML = "";
+    Object.keys(PROCS).forEach((p) => {
+      const b = document.createElement("button");
+      b.className = "tab" + (p === proc ? " on" : ""); b.textContent = PROC_NAMES[p];
+      b.disabled = busy && p !== proc;
+      b.onclick = () => { if (!busy) { proc = p; activeLine = -1; renderCode(); } };
+      tabs.append(b);
+    });
+    const broken = $("broken").checked;
+    const code = $("code"); code.innerHTML = "";
+    PROCS[proc].forEach((txt, i) => {
+      const ln = document.createElement("div"); ln.className = "ln";
+      const no = document.createElement("span"); no.className = "no"; no.textContent = i ? i : "";
+      let shown = txt;
+      if (proc === "delete" && i === 4 && broken) { shown = "T[j] = EMPTY        // BROKEN"; ln.classList.add("bug"); }
+      if (i === 0) ln.classList.add("hdr");
+      if (i === activeLine && busy) ln.classList.add("on");
+      ln.append(no, document.createTextNode(shown));
+      code.append(ln);
+    });
+    const notes = {
+      insert: "Searches all the way to EMPTY before inserting, so a key is never stored twice, and reuses the first tombstone it passed.",
+      search: "Only EMPTY ends an unsuccessful search. A DELETED slot fails both tests, so the loop walks past it.",
+      delete: broken ? "Broken mode: line 4 empties the slot. Watch for keys turning red: no search can reach them now." : "Line 1 runs HASH-SEARCH; every probe it makes is highlighted on line 1.",
+      rehash: "Every key is re-inserted because its slot depends on m. Tombstones are skipped, so d resets to 0.",
+    };
+    $("codeNote").textContent = notes[proc];
+  }
+  function renderStats() {
+    $("sN").textContent = n; $("sD").textContent = d;
+    const a = n / m, ad = (n + d) / m, thr = threshold();
+    $("sA").textContent = a.toFixed(2); $("sAD").textContent = ad.toFixed(2);
+    $("sP").textContent = lastProbes === null ? "-" : lastProbes;
+    $("mN").style.width = (a * 100) + "%";
+    $("mD").style.left = (a * 100) + "%"; $("mD").style.width = (d / m * 100) + "%";
+    $("mT").style.left = (thr * 100) + "%";
+    $("mTl").textContent = "rehash at " + thr;
+    const w = $("warn");
+    if (ad > thr) {
+      w.className = "warn-line bad";
+      w.textContent = `(n + d)/m = ${ad.toFixed(2)} is above ${thr} for ${strat === "quad" ? "quadratic probing (half-full guarantee)" : strat === "linear" ? "linear probing" : "double hashing"}: time to rehash.`;
+    } else if (d > 0 && d >= n) {
+      w.className = "warn-line bad";
+      w.textContent = "Most of the load is tombstones. Rebuilding at the same size would clear them.";
+    } else {
+      w.className = "warn-line ok";
+      w.textContent = n + d === 0 ? "" : "Below the rehash threshold.";
+    }
+    const fmt = (x) => (isFinite(x) ? x.toFixed(1) : "∞");
+    const uni = ad < 1 ? 1 / (1 - ad) : Infinity;
+    const lin = ad < 1 ? 0.5 * (1 + 1 / ((1 - ad) * (1 - ad))) : Infinity;
+    $("expect").innerHTML = "";
+    const mk = (label, val) => { const s = document.createElement("span"); s.append(label + " "); const c = document.createElement("code"); c.textContent = val; s.append(c); return s; };
+    $("expect").append("Expected probes for an unsuccessful search at (n + d)/m = " + ad.toFixed(2) + ": ");
+    $("expect").append(mk("uniform hashing", fmt(uni)));
+    $("expect").append(",  ");
+    $("expect").append(mk("linear probing", fmt(lin)));
+  }
+  function renderSeq() {
+    const raw = $("key").value.trim();
+    const k = Number(raw);
+    const box = $("seq"); box.innerHTML = "";
+    const note = $("seqNote");
+    if (raw === "" || !Number.isInteger(k) || k < 0) { $("seqTitle").textContent = "Probe sequence"; note.textContent = "Type a non-negative key to see its probe sequence."; return; }
+    $("seqTitle").textContent = `Probe sequence for k = ${k}`;
+    const seen = new Set();
+    for (let i = 0; i < m; i++) {
+      const j = h(k, i);
+      const c = document.createElement("span"); c.className = "chip" + (seen.has(j) ? " rep" : "");
+      const lab = document.createElement("i"); lab.textContent = "i=" + i;
+      c.append(lab, document.createTextNode(j));
+      box.append(c); seen.add(j);
+    }
+    note.className = "seq-note";
+    note.innerHTML = "";
+    const b = document.createElement("b");
+    if (seen.size < m) {
+      note.classList.add("warn");
+      const miss = []; for (let j = 0; j < m; j++) if (!seen.has(j)) miss.push(j);
+      b.textContent = `Reaches only ${seen.size} of ${m} slots.`;
+      note.append(b, ` Slots ${miss.join(", ")} are never probed for this key. Crossed-out chips repeat a slot already tried.`);
+    } else {
+      b.textContent = `A permutation: visits all ${m} slots.`;
+      let extra = "";
+      if (strat === "double") extra = ` h1(${k}) = ${h1(k)} picks the home slot; h2(${k}) = 1 + (${k} mod ${m - 1}) = ${h2(k)} is the step.`;
+      else extra = ` Home slot h'(${k}) = ${k} mod ${m} = ${h1(k)}.`;
+      note.append(b, extra);
+    }
+  }
+  function log(text, cls = "info") {
+    const div = document.createElement("div");
+    div.className = cls;
+    div.textContent = text;
+    $("log").prepend(div);
+  }
+
+  // ---------------- actions ----------------
+  function readKey() {
+    const raw = $("key").value.trim();
+    const k = Number(raw);
+    if (raw === "" || !Number.isInteger(k) || k < 0 || k > 9999) {
+      narrate("input", "Keys in this demo are integers from 0 to 9999.", "bad");
+      return null;
+    }
+    return k;
+  }
+  function rebuild(newM, why) {
+    const keys = order.slice();
+    m = newM; T = blank(m); n = 0; d = 0; order = [];
+    const failed = [];
+    keys.forEach((k) => { const r = silentInsert(k); if (r === null) failed.push(k); else if (r !== "dup") order.push(k); });
+    resetVis(); lastProbes = null;
+    if (why) log(why + (keys.length ? ` Re-inserted ${keys.length - failed.length} key${keys.length - failed.length !== 1 ? "s" : ""} in their original order.` : ""), "info");
+    if (failed.length) log(`Could not place ${failed.join(", ")}: overflow during rebuild.`, "bad");
+  }
+  function syncM() {
+    const sel = $("msel");
+    if (![...sel.options].some((o) => +o.value === m)) { const o = document.createElement("option"); o.textContent = m; sel.append(o); }
+    sel.value = String(m);
+  }
+
+  $("bIns").onclick = () => { const k = readKey(); if (k !== null) run(insertGen(k), "insert"); };
+  $("bSea").onclick = () => { const k = readKey(); if (k !== null) run(searchGen(k), "search"); };
+  $("bDel").onclick = () => { const k = readKey(); if (k !== null) run(deleteGen(k), "delete"); };
+  $("bNext").onclick = tick;
+  $("bFin").onclick = finishNow;
+  $("auto").onchange = () => { $("bNext").disabled = !busy || $("auto").checked; if (busy && $("auto").checked) tick(); };
+
+  $("bTut").onclick = () => {
+    m = 11; syncM(); T = blank(m); n = 0; d = 0; order = [];
+    [22, 1, 13, 11, 24, 33].forEach((k) => { if (silentInsert(k) !== null) order.push(k); });
+    resetVis(); lastProbes = null; proc = "insert"; activeLine = -1;
+    log(`Tutorial table: m = 11, ${stratName()}, inserted 22, 1, 13, 11, 24, 33.`, "info");
+    narrate("preset", "Tutorial keys loaded. Try: search 44, then delete 13 (with and without broken delete), then search 24.");
+    $("key").value = 44; render();
+  };
+  $("bRand").onclick = () => {
+    T = blank(m); n = 0; d = 0; order = [];
+    const want = Math.max(2, Math.floor(m * 0.45));
+    let tries = 0;
+    while (n < want && tries < 500) { const k = Math.floor(Math.random() * 100); if (silentSearch(k) === null) { const r = silentInsert(k); if (r !== null && r !== "dup") order.push(k); } tries++; }
+    resetVis(); lastProbes = null;
+    log(`Random table: ${order.join(", ")}`, "info");
+    narrate("preset", `Inserted ${n} random keys.`);
+    render();
+  };
+  $("bClr").onclick = () => {
+    T = blank(m); n = 0; d = 0; order = []; resetVis(); lastProbes = null;
+    log("Table cleared.", "info"); narrate("ready", "Table cleared."); render();
+  };
+  $("bRe").onclick = () => {
+    const old = m, nm = nextPrime(2 * m);
+    proc = "rehash"; activeLine = -1;
+    rebuild(nm, `REHASH: m ${old} → nextPrime(${2 * old}) = ${nm}. Tombstones dropped.`);
+    syncM(); narrate("rehash", `Rehashed into m = ${nm}. Every key moved, because its position depends on m.`, "good"); render();
+  };
+  $("bSame").onclick = () => {
+    const dd = d;
+    proc = "rehash"; activeLine = -1;
+    rebuild(m, `REHASH at the same size m = ${m}: cleared ${dd} tombstone${dd !== 1 ? "s" : ""}.`);
+    narrate("rehash", `Rebuilt at m = ${m}. d is back to 0.`, "good"); render();
+  };
+  $("strat").onchange = () => {
+    strat = $("strat").value;
+    rebuild(m, `Switched to ${stratName()}.`);
+    narrate("ready", `Now using ${stratName()}. The same keys were re-inserted so you can compare layouts.`);
+    renderFormula(); render();
+  };
+  $("msel").onchange = () => {
+    const nm = +$("msel").value;
+    rebuild(nm, `Table size changed to m = ${nm}.`);
+    renderFormula(); render();
+  };
+  $("broken").onchange = () => {
+    if ($("broken").checked) { log("Broken delete ON: HASH-DELETE now sets the slot to EMPTY.", "bad"); narrate("mode", "Broken delete is on. Delete a key that others probed past, then search for them.", "bad"); }
+    else log("Broken delete OFF: HASH-DELETE marks the slot DELETED.", "info");
+    proc = "delete"; activeLine = -1; renderCode();
+  };
+  $("key").addEventListener("input", renderSeq);
+  $("key").addEventListener("keydown", (e) => { if (e.key === "Enter" && !busy) { e.preventDefault(); $("bIns").click(); } });
+  document.addEventListener("keydown", (e) => {
+    if (!busy || $("auto").checked) return;
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "n") { if (document.activeElement !== $("key") || e.key !== "ArrowRight") { e.preventDefault(); tick(); } }
+  });
+  function stratName() { return strat === "linear" ? "linear probing" : strat === "quad" ? "quadratic probing" : "double hashing"; }
+
+  renderFormula();
+  render();
+  log("Ready. Load the tutorial keys or insert your own.", "info");
+})();
+</script>
+</body>
+</html>
