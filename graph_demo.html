@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSC2180 Graph Demo</title>
+<style>
+  :root{
+    --navy:#1F3864; --navy-light:#2E4E8C;
+    --green:#2E7D32; --green-bg:#E8F5E9;
+    --red:#B71C1C; --red-bg:#FDECEA;
+    --blue:#1F5FBF; --blue-bg:#E7EDF6;
+    --purple:#6A3D9A; --purple-bg:#F1E9F9;
+    --amber:#8A6100; --amber-bg:#FFF1CC;
+    --grey:#8A93A3;
+  }
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;background:#F6F7FA;color:#1c1c1c;margin:0;padding:20px}
+  .wrap{max-width:1280px;margin:0 auto}
+  header{background:var(--navy);color:#fff;padding:16px 24px;border-radius:8px 8px 0 0}
+  header h1{margin:0;font-size:22px}
+  header p{margin:4px 0 0;font-size:14px;color:#CBD6EA}
+  .panel{background:#fff;border:1px solid #DCE1E8;border-top:none;border-radius:0 0 8px 8px;padding:20px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  .row.sep{padding-bottom:12px;border-bottom:1px dashed #DCE1E8}
+  .lbl{font-size:12px;font-weight:bold;color:#55607a;text-transform:uppercase;letter-spacing:.04em}
+  select{font-family:Consolas,monospace;font-size:15px;padding:7px 8px;border:1px solid #C9CFDA;border-radius:6px;background:#fff}
+  button{font-family:Arial,sans-serif;font-size:14px;font-weight:bold;padding:8px 14px;border:none;border-radius:6px;cursor:pointer;color:#fff;background:var(--navy-light)}
+  button:hover{opacity:.88}
+  button.green{background:var(--green)} button.red{background:var(--red)}
+  button.purple{background:var(--purple)} button.ghost{background:#6b7486}
+  .seg{display:inline-flex;border:1px solid #C9CFDA;border-radius:6px;overflow:hidden}
+  .seg button{background:#fff;color:#333;border-radius:0;font-weight:normal}
+  .seg button.on{background:var(--navy);color:#fff;font-weight:bold}
+  .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr}}
+  .card{border:1px solid #DCE1E8;border-radius:8px;padding:12px;margin-bottom:14px;background:#fff}
+  .card h3{margin:0 0 8px;font-size:13px;color:#55607a;text-transform:uppercase;letter-spacing:.04em}
+  svg{width:100%;height:auto;display:block;background:#FAFBFD;border-radius:6px;border:1px solid #E3E7EE;touch-action:none}
+  .hint{font-size:12px;color:#6b7486;margin-top:6px}
+  .ds{display:flex;gap:6px;min-height:42px;align-items:center;flex-wrap:wrap}
+  .box{min-width:40px;height:40px;border:2px solid var(--amber);background:var(--amber-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font:bold 17px Consolas,monospace}
+  .box.top{border-color:var(--red);background:var(--red-bg)}
+  .tag{font-size:12px;color:#6b7486;margin:0 4px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font:bold 14px Consolas,monospace;padding:4px 8px;border-radius:5px;border:1px solid #C9CFDA;background:#F3F5F9;color:#6b7486}
+  .chip.t{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+  .order .chip{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+  .alist{font:15px Consolas,monospace}
+  .alist .r{display:flex;gap:6px;align-items:center;padding:3px 6px;border-radius:5px;margin-bottom:2px}
+  .alist .r.cur{background:var(--red-bg)}
+  .alist .k{width:26px;font-weight:bold}
+  .alist .n{padding:1px 8px;border:1px solid #9FB0CE;border-radius:4px;background:var(--blue-bg)}
+  .alist .n.ex{background:var(--purple-bg);border-color:var(--purple);font-weight:bold}
+  table.m{border-collapse:collapse;font:14px Consolas,monospace}
+  table.m td,table.m th{width:30px;height:28px;text-align:center;border:1px solid #DCE1E8}
+  table.m th{background:#F3F5F9;color:#55607a}
+  table.m td.one{background:var(--blue-bg);font-weight:bold;color:var(--navy)}
+  table.m tr.cur td,table.m tr.cur th{background:var(--red-bg)}
+  table.m td.ex{background:var(--purple-bg);outline:2px solid var(--purple);outline-offset:-2px}
+  .tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+  .tabs button{background:#E7EAF1;color:#333;font-weight:normal;padding:6px 10px;font-size:13px}
+  .tabs button.on{background:var(--navy);color:#fff;font-weight:bold}
+  pre.code{margin:0;background:#101828;color:#E5EAF3;border-radius:6px;padding:10px 0;font:13.5px/1.5 Consolas,Menlo,monospace;overflow:auto;max-height:340px}
+  pre.code div{padding:0 12px;white-space:pre;border-left:4px solid transparent}
+  pre.code div.hl{background:#33435F;border-left-color:#FFC107;color:#fff}
+  #log{height:190px;overflow:auto;font:13px/1.5 Consolas,monospace;background:#FAFBFD;border:1px solid #E3E7EE;border-radius:6px;padding:8px}
+  #log div{padding:1px 0}
+  .t-visit{color:var(--green);font-weight:bold}.t-push{color:var(--amber)}.t-pop{color:var(--purple)}
+  .t-skip{color:var(--grey)}.t-err{color:var(--red);font-weight:bold}.t-info{color:#33415c}
+  .speed{display:flex;align-items:center;gap:8px;font-size:13px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#55607a;margin-top:8px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid;margin-right:4px;vertical-align:-2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>CSC2180 Graph Demo</h1>
+  <p>Adjacency list, adjacency matrix, BFS (queue), and DFS (recursion and explicit stack)</p>
+</header>
+<div class="panel">
+
+  <div class="row sep">
+    <span class="lbl">Graph</span>
+    <div class="seg"><button id="mUnd" class="on">Undirected</button><button id="mDir">Directed</button></div>
+    <button id="btnAddV" class="green">Add Vertex</button>
+    <select id="selU"></select>
+    <select id="selV"></select>
+    <button id="btnAddE" class="green">Add Edge u,v</button>
+    <button id="btnRemE" class="red">Remove Edge u,v</button>
+    <button id="btnRemV" class="red">Remove Vertex u</button>
+    <button id="btnSample" class="ghost">Sample Graph</button>
+    <button id="btnClear" class="ghost">Clear</button>
+  </div>
+
+  <div class="row sep">
+    <span class="lbl">Traverse from</span>
+    <select id="selStart"></select>
+    <button id="btnBFS" class="purple">BFS</button>
+    <button id="btnDFSR" class="purple">DFS (recursive)</button>
+    <button id="btnDFSS" class="purple">DFS (stack)</button>
+    <span style="width:10px"></span>
+    <button id="btnPlay" class="ghost">Pause</button>
+    <button id="btnStep" class="ghost">Step</button>
+    <button id="btnStop" class="ghost">Stop</button>
+    <div class="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h3>Graph <span id="modeTag" style="text-transform:none;color:#8A93A3"></span></h3>
+        <svg id="svg" viewBox="0 0 640 400">
+          <defs>
+            <marker id="ahG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A93A3"/></marker>
+            <marker id="ahT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F5FBF"/></marker>
+            <marker id="ahE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6A3D9A"/></marker>
+          </defs>
+          <rect id="bg" x="0" y="0" width="640" height="400" fill="transparent"/>
+          <g id="gEdges"></g><g id="gNodes"></g>
+        </svg>
+        <div class="hint">Click empty space to add a vertex. Drag a vertex to move it. Neighbors are visited in alphabetical order.</div>
+        <div class="legend">
+          <span><i style="border-color:#B71C1C;background:#FDECEA"></i>current</span>
+          <span><i style="border-color:#8A6100;background:#FFF1CC"></i>in queue / on stack</span>
+          <span><i style="border-color:#2E7D32;background:#E8F5E9"></i>finished</span>
+          <span><i style="border-color:#6A3D9A;background:#F1E9F9"></i>edge being examined</span>
+          <span><i style="border-color:#1F5FBF;background:#fff"></i>tree edge (how we reached it)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 id="dsTitle">Queue / Stack</h3>
+        <div class="ds" id="dsBox"></div>
+        <h3 style="margin-top:12px">visited[]</h3>
+        <div class="chips" id="visChips"></div>
+        <h3 style="margin-top:12px">Visit order</h3>
+        <div class="chips order" id="orderChips"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card"><h3>Adjacency list</h3><div class="alist" id="alist"></div></div>
+      <div class="card"><h3>Adjacency matrix</h3><div id="matrix"></div></div>
+      <div class="card">
+        <h3>C++</h3>
+        <div class="tabs" id="tabs"></div>
+        <pre class="code" id="code"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0"><h3>Operation log</h3><div id="log"></div></div>
+</div>
+</div>
+
+<script>
+/* ---------- state ---------- */
+const MAXV = 10, R = 22;
+let verts = [];            // {id,x,y}
+let edges = [];            // directed pairs [u,v]; undirected graphs store both directions
+let directed = false;
+let trace = [], tIdx = -1, playing = false, timer = null;
+let snap = null;           // current trace snapshot (or null)
+let codeTab = 'graph';
+
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const ids = () => verts.map(v => v.id).sort();
+const hasEdge = (u,v) => edges.some(e => e[0]===u && e[1]===v);
+const adjOf = u => edges.filter(e => e[0]===u).map(e => e[1]).sort();
+const vert = id => verts.find(v => v.id===id);
+
+/* ---------- code text ---------- */
+const CODE = {
+  graph: {label:'Graph class', lines:[
+    'class Graph {',
+    '    bool directed;',
+    '    vector<vector<int>> adj;      // adj[u] = neighbors of u',
+    'public:',
+    '    void addEdge(int u, int v) {',
+    '        adj[u].push_back(v);',
+    '        if (!directed)',
+    '            adj[v].push_back(u);  // undirected: store both ways',
+    '    }',
+    '    void removeEdge(int u, int v) {',
+    '        adj[u].erase(remove(adj[u].begin(), adj[u].end(), v),',
+    '                     adj[u].end());',
+    '        if (!directed)',
+    '            adj[v].erase(remove(adj[v].begin(), adj[v].end(), u),',
+    '                         adj[v].end());',
+    '    }',
+    '};' ]},
+  bfs: {label:'BFS', lines:[
+    'void bfs(int start) {',
+    '    vector<bool> visited(n, false);',
+    '    queue<int> q;',
+    '    visited[start] = true;',
+    '    q.push(start);',
+    '    while (!q.empty()) {',
+    '        int u = q.front(); q.pop();',
+    '        visit(u);',
+    '        for (int v : adj[u]) {',
+    '            if (!visited[v]) {',
+    '                visited[v] = true;',
+    '                q.push(v);',
+    '            }',
+    '        }',
+    '    }',
+    '}' ]},
+  dfsr: {label:'DFS recursive', lines:[
+    'vector<bool> visited(n, false);',
+    'void dfs(int u) {',
+    '    visited[u] = true;',
+    '    visit(u);',
+    '    for (int v : adj[u]) {',
+    '        if (!visited[v]) {',
+    '            dfs(v);',
+    '        }',
+    '    }',
+    '}' ]},
+  dfss: {label:'DFS stack', lines:[
+    'void dfs(int start) {',
+    '    vector<bool> visited(n, false);',
+    '    stack<int> s;',
+    '    s.push(start);',
+    '    while (!s.empty()) {',
+    '        int u = s.top(); s.pop();',
+    '        if (visited[u]) continue;',
+    '        visited[u] = true;',
+    '        visit(u);',
+    '        for (int v : adj[u])',
+    '            if (!visited[v])',
+    '                s.push(v);',
+    '    }',
+    '}' ]}
+};
+
+function renderTabs(){
+  const t = $('tabs'); t.innerHTML = '';
+  for (const k of Object.keys(CODE)){
+    const b = document.createElement('button');
+    b.textContent = CODE[k].label;
+    if (k===codeTab) b.className = 'on';
+    b.onclick = () => { codeTab = k; renderCode(null); renderTabs(); };
+    t.appendChild(b);
+  }
+}
+function renderCode(hl){
+  const pre = $('code'); pre.innerHTML = '';
+  CODE[codeTab].lines.forEach((ln,i) => {
+    const d = document.createElement('div');
+    d.textContent = ln || ' ';
+    if (hl!==null && hl!==undefined && Array.isArray(hl) ? hl.includes(i) : i===hl) d.className = 'hl';
+    pre.appendChild(d);
+  });
+  const h = pre.querySelector('.hl'); if (h) h.scrollIntoView({block:'nearest'});
+}
+function showCode(tab, hl){ codeTab = tab; renderTabs(); renderCode(hl); }
+
+/* ---------- log ---------- */
+function log(msg, type){
+  const d = document.createElement('div');
+  d.className = 't-' + (type||'info');
+  d.textContent = msg;
+  $('log').appendChild(d);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+/* ---------- graph editing ---------- */
+function stopTrace(){
+  clearTimeout(timer); playing = false; trace = []; tIdx = -1; snap = null;
+  $('btnPlay').textContent = 'Pause';
+}
+function addVertexAt(x,y){
+  if (verts.length >= MAXV){ log('maximum of ' + MAXV + ' vertices in this demo', 'err'); return; }
+  const used = new Set(verts.map(v=>v.id));
+  const id = 'ABCDEFGHIJ'.split('').find(c => !used.has(c));
+  if (x===undefined){
+    for (let k=0;k<80;k++){
+      x = 50 + Math.random()*540; y = 50 + Math.random()*300;
+      if (verts.every(v => Math.hypot(v.x-x, v.y-y) > 80)) break;
+    }
+  }
+  stopTrace();
+  verts.push({id, x, y});
+  log('add vertex ' + id + '  (new empty row in the list, new row and column in the matrix)', 'push');
+  refresh();
+}
+function addEdge(u,v){
+  if (!u || !v) return;
+  if (u===v){ log('self-loops are not supported in this demo', 'err'); return; }
+  if (hasEdge(u,v)){ log('edge ' + u + (directed?' -> ':' - ') + v + ' already exists', 'err'); return; }
+  stopTrace();
+  edges.push([u,v]);
+  if (!directed && !hasEdge(v,u)) edges.push([v,u]);
+  showCode('graph', directed ? [4,5] : [4,5,6,7]);
+  log('addEdge(' + u + ', ' + v + ')  ' + (directed ? 'adj[' + u + '] gets ' + v + ' only' : 'adj[' + u + '] gets ' + v + ' and adj[' + v + '] gets ' + u), 'push');
+  refresh(true);
+}
+function removeEdge(u,v){
+  if (!u || !v) return;
+  if (!hasEdge(u,v) && !(!directed && hasEdge(v,u))){ log('no edge ' + u + ' to ' + v, 'err'); return; }
+  stopTrace();
+  edges = edges.filter(e => !(e[0]===u && e[1]===v) && !(!directed && e[0]===v && e[1]===u));
+  showCode('graph', directed ? [9,10,11] : [9,10,11,12,13,14]);
+  log('removeEdge(' + u + ', ' + v + ')', 'pop');
+  refresh(true);
+}
+function removeVertex(u){
+  if (!u) return;
+  stopTrace();
+  verts = verts.filter(v => v.id!==u);
+  edges = edges.filter(e => e[0]!==u && e[1]!==u);
+  log('remove vertex ' + u + ' and every edge touching it (row and column disappear)', 'pop');
+  refresh();
+}
+function setMode(dir){
+  if (dir===directed) return;
+  stopTrace(); directed = dir;
+  if (!directed){
+    const add = [];
+    edges.forEach(e => { if (!hasEdge(e[1],e[0])) add.push([e[1],e[0]]); });
+    edges.push(...add);
+    log('switched to UNDIRECTED: every edge now stored in both adjacency lists (matrix is symmetric)', 'info');
+  } else {
+    log('switched to DIRECTED: edges keep their stored direction; add edges one way at a time', 'info');
+  }
+  refresh();
+}
+function loadSample(){
+  stopTrace();
+  directed = false;
+  const P = {A:[90,200],B:[220,110],C:[220,290],D:[360,60],E:[360,170],F:[360,320],G:[500,220],H:[560,60],I:[590,340]};
+  verts = Object.keys(P).map(k => ({id:k, x:P[k][0], y:P[k][1]}));
+  edges = [];
+  [['A','B'],['A','C'],['B','D'],['B','E'],['C','F'],['D','G'],['E','G'],['F','G'],['H','I']]
+    .forEach(([a,b]) => { edges.push([a,b]); edges.push([b,a]); });
+  log('loaded sample graph: A-G connected (with a cycle B-D-G-E), plus a separate component H-I', 'info');
+  refresh();
+}
+function clearAll(){
+  stopTrace(); verts = []; edges = [];
+  log('cleared graph', 'info'); refresh();
+}
+
+/* ---------- rendering ---------- */
+function fillSelects(){
+  for (const id of ['selU','selV','selStart']){
+    const s = $(id), keep = s.value; s.innerHTML = '';
+    ids().forEach(v => { const o = document.createElement('option'); o.value = o.textContent = v; s.appendChild(o); });
+    if (ids().includes(keep)) s.value = keep;
+  }
+  if (ids().length > 1 && $('selU').value === $('selV').value) $('selV').selectedIndex = 1;
+}
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function isTree(u,v){
+  if (!snap) return false;
+  return snap.tree.some(t => (t[0]===u && t[1]===v) || (!directed && t[0]===v && t[1]===u));
+}
+function isExam(u,v){
+  if (!snap || !snap.edge) return false;
+  return (snap.edge[0]===u && snap.edge[1]===v) || (!directed && snap.edge[0]===v && snap.edge[1]===u);
+}
+function drawGraph(){
+  const ge = $('gEdges'), gn = $('gNodes'); ge.innerHTML = ''; gn.innerHTML = '';
+  for (const [u,v] of edges){
+    if (!directed && u > v) continue;
+    const a = vert(u), b = vert(v); if (!a || !b) continue;
+    let x1=a.x, y1=a.y, x2=b.x, y2=b.y;
+    const dx = x2-x1, dy = y2-y1, len = Math.hypot(dx,dy) || 1, ux = dx/len, uy = dy/len;
+    if (directed){
+      if (hasEdge(v,u)){ const off = 7; x1 += -uy*off; y1 += ux*off; x2 += -uy*off; y2 += ux*off; }
+      x1 += ux*R; y1 += uy*R; x2 -= ux*(R+3); y2 -= uy*(R+3);
+    }
+    const ex = isExam(u,v), tr = isTree(u,v);
+    const col = ex ? '#6A3D9A' : tr ? '#1F5FBF' : '#8A93A3';
+    const attrs = {x1,y1,x2,y2,stroke:col,'stroke-width': ex ? 4 : tr ? 4 : 2.2};
+    if (directed) attrs['marker-end'] = 'url(#' + (ex?'ahE':tr?'ahT':'ahG') + ')';
+    el('line', attrs, ge);
+  }
+  for (const v of verts){
+    let fill='#fff', stroke='#1F3864', sw=2.5;
+    if (snap){
+      const inDS = snap.ds.includes(v.id), done = snap.done.includes(v.id);
+      if (v.id===snap.cur){ fill='#FDECEA'; stroke='#B71C1C'; sw=4; }
+      else if (done){ fill='#E8F5E9'; stroke='#2E7D32'; }
+      else if (inDS){ fill='#FFF1CC'; stroke='#8A6100'; }
+    }
+    const g = el('g', {style:'cursor:grab'}, gn);
+    el('circle', {cx:v.x, cy:v.y, r:R, fill, stroke, 'stroke-width':sw}, g);
+    const t = el('text', {x:v.x, y:v.y+6, 'text-anchor':'middle','font-size':18,'font-weight':'bold','font-family':'Consolas,monospace',fill:'#1F3864','pointer-events':'none'}, g);
+    t.textContent = v.id;
+    if (snap && snap.dist && snap.dist[v.id] !== undefined){
+      const d = el('text', {x:v.x, y:v.y+R+15, 'text-anchor':'middle','font-size':12,'font-family':'Consolas,monospace',fill:'#1F5FBF','pointer-events':'none'}, g);
+      d.textContent = 'dist=' + snap.dist[v.id];
+    }
+    g.addEventListener('pointerdown', ev => startDrag(ev, v));
+  }
+}
+function drawLists(){
+  const al = $('alist'); al.innerHTML = '';
+  const hlRow = snap && snap.cur;
+  if (!verts.length) al.innerHTML = '<span class="tag">(no vertices)</span>';
+  for (const u of ids()){
+    const r = document.createElement('div'); r.className = 'r' + (u===hlRow ? ' cur' : '');
+    const k = document.createElement('span'); k.className = 'k'; k.textContent = u + ':'; r.appendChild(k);
+    const ns = adjOf(u);
+    if (!ns.length){ const e = document.createElement('span'); e.className='tag'; e.textContent='(empty)'; r.appendChild(e); }
+    ns.forEach((v,i) => {
+      if (i) { const a = document.createElement('span'); a.textContent = '->'; a.style.color='#8A93A3'; r.appendChild(a); }
+      const n = document.createElement('span');
+      n.className = 'n' + (snap && snap.edge && snap.edge[0]===u && snap.edge[1]===v ? ' ex' : '');
+      n.textContent = v; r.appendChild(n);
+    });
+    al.appendChild(r);
+  }
+  const m = $('matrix'); const I = ids();
+  if (!I.length){ m.innerHTML = '<span class="tag">(no vertices)</span>'; return; }
+  let h = '<table class="m"><tr><th></th>' + I.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+  for (const u of I){
+    h += '<tr class="' + (u===hlRow ? 'cur' : '') + '"><th>' + u + '</th>';
+    for (const v of I){
+      const one = hasEdge(u,v);
+      const ex = snap && snap.edge && snap.edge[0]===u && snap.edge[1]===v;
+      h += '<td class="' + (one?'one ':'') + (ex?'ex':'') + '">' + (one?1:0) + '</td>';
+    }
+    h += '</tr>';
+  }
+  m.innerHTML = h + '</table>';
+}
+function drawPanels(){
+  const dsT = {bfs:'Queue  (front on the left, rear on the right)', dfsr:'Call stack  (top on the right)', dfss:'Stack  (top on the right)'};
+  $('dsTitle').textContent = snap ? dsT[snap.algo] : 'Queue / Stack';
+  const box = $('dsBox'); box.innerHTML = '';
+  if (!snap){ box.innerHTML = '<span class="tag">run BFS or DFS to see the data structure</span>'; }
+  else if (!snap.ds.length){ box.innerHTML = '<span class="tag">(empty)</span>'; }
+  else snap.ds.forEach((v,i) => {
+    const b = document.createElement('div');
+    const isTop = snap.algo==='bfs' ? i===0 : i===snap.ds.length-1;
+    b.className = 'box' + (isTop ? ' top' : '');
+    b.textContent = snap.algo==='dfsr' ? 'dfs(' + v + ')' : v;
+    if (snap.algo==='dfsr') b.style.fontSize = '13px';
+    box.appendChild(b);
+  });
+  const vc = $('visChips'); vc.innerHTML = '';
+  ids().forEach(v => {
+    const c = document.createElement('span');
+    const on = snap && snap.vis.includes(v);
+    c.className = 'chip' + (on ? ' t' : '');
+    c.textContent = v + ':' + (on ? 'T' : 'F');
+    vc.appendChild(c);
+  });
+  const oc = $('orderChips'); oc.innerHTML = '';
+  if (!snap || !snap.order.length) oc.innerHTML = '<span class="tag">(none yet)</span>';
+  else snap.order.forEach(v => { const c = document.createElement('span'); c.className='chip'; c.textContent=v; oc.appendChild(c); });
+}
+function refresh(keepCode){
+  fillSelects(); drawGraph(); drawLists(); drawPanels();
+  $('modeTag').textContent = '(' + (directed ? 'directed' : 'undirected') + ', ' + verts.length + ' vertices, ' + (directed ? edges.length : edges.length/2) + ' edges)';
+  $('mUnd').className = directed ? '' : 'on'; $('mDir').className = directed ? 'on' : '';
+  if (!keepCode && !snap) renderCode(null);
+}
+
+/* ---------- drag / click ---------- */
+let drag = null;
+function svgPt(ev){
+  const p = $('svg').createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+  return p.matrixTransform($('svg').getScreenCTM().inverse());
+}
+function startDrag(ev, v){ ev.preventDefault(); drag = v; }
+window.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  const p = svgPt(ev);
+  drag.x = Math.max(R, Math.min(640-R, p.x)); drag.y = Math.max(R, Math.min(400-R, p.y));
+  drawGraph();
+});
+window.addEventListener('pointerup', () => { drag = null; });
+$('bg').addEventListener('click', ev => { const p = svgPt(ev); addVertexAt(p.x, p.y); });
+
+/* ---------- traces ---------- */
+function mk(algo){
+  const T = [], st = {vis:new Set(), ds:[], done:new Set(), order:[], tree:[], dist:{}, cur:null, edge:null};
+  const s = (line, msg, type) => T.push({algo, line, msg, type:type||'info',
+    vis:[...st.vis], ds:[...st.ds], done:[...st.done], order:[...st.order],
+    tree:st.tree.map(e => e.slice()), dist:{...st.dist}, cur:st.cur, edge:st.edge ? st.edge.slice() : null});
+  return {T, st, s};
+}
+function finish(algo, T, st, s, line){
+  st.cur = null; st.edge = null;
+  const miss = ids().filter(v => !st.order.includes(v));
+  let m = 'Done. Visit order: ' + st.order.join(', ') + '.';
+  if (miss.length) m += '  Not reached: ' + miss.join(', ') + ' (a different connected component; a full traversal restarts from each unvisited vertex).';
+  s(line, m, 'visit');
+}
+function traceBFS(start){
+  const {T,st,s} = mk('bfs');
+  s(1, 'visited[] starts all false');
+  s(2, 'queue starts empty');
+  st.vis.add(start); st.dist[start] = 0;
+  s(3, 'mark ' + start + ' visited (BFS marks a vertex when it is ENQUEUED)');
+  st.ds.push(start);
+  s(4, 'enqueue ' + start, 'push');
+  while (true){
+    s(5, st.ds.length ? 'queue not empty, keep going' : 'queue is empty, loop ends');
+    if (!st.ds.length) break;
+    const u = st.ds.shift(); st.cur = u; st.edge = null;
+    s(6, 'dequeue ' + u + ': it becomes the current vertex', 'pop');
+    st.done.add(u); st.order.push(u);
+    s(7, 'visit(' + u + ')', 'visit');
+    for (const v of adjOf(u)){
+      st.edge = [u,v];
+      s(8, 'examine neighbor ' + v + ' from adj[' + u + ']');
+      if (!st.vis.has(v)){
+        s(9, v + ' is not visited yet');
+        st.vis.add(v); st.dist[v] = st.dist[u] + 1; st.tree.push([u,v]);
+        s(10, 'mark ' + v + ' visited, dist[' + v + '] = ' + st.dist[v]);
+        st.ds.push(v);
+        s(11, 'enqueue ' + v, 'push');
+      } else s(9, v + ' already visited, skip', 'skip');
+    }
+    st.edge = null;
+  }
+  finish('bfs', T, st, s, 15);
+  s(15, 'BFS finished the whole graph level by level; dist[] is the fewest edges from ' + start, 'info');
+  return T;
+}
+function traceDFSR(start){
+  const {T,st,s} = mk('dfsr');
+  s(0, 'visited[] starts all false, then we call dfs(' + start + ')');
+  const rec = u => {
+    st.ds.push(u); st.cur = u; st.edge = null; st.vis.add(u);
+    s(2, 'dfs(' + u + ') is called (new frame on the call stack); mark ' + u + ' visited', 'push');
+    st.order.push(u);
+    s(3, 'visit(' + u + ')', 'visit');
+    for (const v of adjOf(u)){
+      st.cur = u; st.edge = [u,v];
+      s(4, 'examine neighbor ' + v + ' from adj[' + u + ']');
+      if (!st.vis.has(v)){
+        s(5, v + ' is not visited yet');
+        st.tree.push([u,v]);
+        s(6, 'recursive call: dfs(' + v + ')', 'push');
+        rec(v);
+      } else s(5, v + ' already visited, skip', 'skip');
+    }
+    st.edge = null; st.done.add(u); st.ds.pop(); st.cur = st.ds.length ? st.ds[st.ds.length-1] : null;
+    s(9, 'dfs(' + u + ') returns (frame popped)' + (st.cur ? ', back in dfs(' + st.cur + ')' : ''), 'pop');
+  };
+  rec(start);
+  finish('dfsr', T, st, s, 9);
+  s(9, 'DFS goes as deep as possible before backing up; the call stack did the work', 'info');
+  return T;
+}
+function traceDFSS(start){
+  const {T,st,s} = mk('dfss'), par = [];
+  s(1, 'visited[] starts all false');
+  s(2, 'stack starts empty');
+  st.ds.push(start); par.push(null);
+  s(3, 'push ' + start, 'push');
+  while (true){
+    s(4, st.ds.length ? 'stack not empty, keep going' : 'stack is empty, loop ends');
+    if (!st.ds.length) break;
+    const u = st.ds.pop(), p = par.pop(); st.cur = u; st.edge = null;
+    s(5, 'pop ' + u, 'pop');
+    if (st.vis.has(u)){ st.done.add(u); s(6, u + ' was already visited, discard this duplicate entry', 'skip'); continue; }
+    st.vis.add(u); st.done.add(u); if (p) st.tree.push([p,u]);
+    s(7, 'mark ' + u + ' visited (this version marks when POPPED)');
+    st.order.push(u);
+    s(8, 'visit(' + u + ')', 'visit');
+    for (const v of adjOf(u)){
+      st.edge = [u,v];
+      s(9, 'examine neighbor ' + v + ' from adj[' + u + ']');
+      if (!st.vis.has(v)){
+        s(10, v + ' is not visited yet');
+        st.ds.push(v); par.push(u);
+        s(11, 'push ' + v + ' (it may already be on the stack; duplicates are fine)', 'push');
+      } else s(10, v + ' already visited, skip', 'skip');
+    }
+    st.edge = null;
+  }
+  finish('dfss', T, st, s, 13);
+  s(13, 'Same idea as recursive DFS, but the last neighbor pushed is explored first, so the order can differ', 'info');
+  return T;
+}
+
+/* ---------- playback ---------- */
+const delay = () => 1900 - Number($('speed').value) * 170;
+function showStep(i){
+  tIdx = i; snap = trace[i];
+  showCode(snap.algo, snap.line);
+  log(snap.msg, snap.type);
+  drawGraph(); drawLists(); drawPanels();
+}
+function tick(){
+  if (!playing) return;
+  if (tIdx >= trace.length - 1){ playing = false; $('btnPlay').textContent = 'Replay'; return; }
+  showStep(tIdx + 1);
+  timer = setTimeout(tick, delay());
+}
+function run(kind){
+  const s = $('selStart').value;
+  if (!s){ log('add a vertex first', 'err'); return; }
+  stopTrace();
+  const names = {bfs:'BFS', dfsr:'DFS (recursive)', dfss:'DFS (stack)'};
+  log('--- ' + names[kind] + ' from ' + s + ' ---', 'info');
+  trace = kind==='bfs' ? traceBFS(s) : kind==='dfsr' ? traceDFSR(s) : traceDFSS(s);
+  playing = true; $('btnPlay').textContent = 'Pause';
+  tick();
+}
+$('btnPlay').onclick = () => {
+  if (!trace.length) return;
+  if (playing){ playing = false; clearTimeout(timer); $('btnPlay').textContent = 'Resume'; return; }
+  if (tIdx >= trace.length - 1){ tIdx = -1; log('--- replay ---', 'info'); }
+  playing = true; $('btnPlay').textContent = 'Pause'; tick();
+};
+$('btnStep').onclick = () => {
+  if (!trace.length) return;
+  playing = false; clearTimeout(timer); $('btnPlay').textContent = 'Resume';
+  if (tIdx < trace.length - 1) showStep(tIdx + 1);
+};
+$('btnStop').onclick = () => { stopTrace(); refresh(); renderCode(null); log('traversal cleared', 'info'); };
+
+/* ---------- wiring ---------- */
+$('mUnd').onclick = () => setMode(false);
+$('mDir').onclick = () => setMode(true);
+$('btnAddV').onclick = () => addVertexAt();
+$('btnAddE').onclick = () => addEdge($('selU').value, $('selV').value);
+$('btnRemE').onclick = () => removeEdge($('selU').value, $('selV').value);
+$('btnRemV').onclick = () => removeVertex($('selU').value);
+$('btnSample').onclick = loadSample;
+$('btnClear').onclick = clearAll;
+$('btnBFS').onclick = () => run('bfs');
+$('btnDFSR').onclick = () => run('dfsr');
+$('btnDFSS').onclick = () => run('dfss');
+
+renderTabs(); renderCode(null);
+loadSample();
+log('Demo loaded. Try BFS and DFS from A, then switch to directed and compare the matrix.', 'info');
+</script>
+</body>
+</html>
