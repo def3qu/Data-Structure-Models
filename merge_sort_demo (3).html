@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSC 2180 Merge Sort Demo</title>
+<style>
+  :root {
+    --navy: #1F3864; --navy2: #2B4A82; --ink: #1b1f27; --paper: #f5f7fb; --line: #d3dae8;
+    --cmp: #F2B134; --left: #2E86DE; --right: #7E57C2; --piece: #8AD0BF; --final: #3AA35B;
+    --range: #C5D2EA; --plain: #9FB0CC; --take: #3AA35B;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: Arial, Helvetica, sans-serif; background: var(--paper); color: var(--ink);
+         display: flex; flex-direction: column; font-size: 16px; }
+  header { background: var(--navy); color: #fff; padding: 10px 22px; display: flex; align-items: baseline; gap: 18px; }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: .3px; }
+  header span { opacity: .8; font-size: 15px; }
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 14px; padding: 14px 18px; }
+  .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; overflow-y: auto; }
+  .col > * { flex-shrink: 0; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: inherit; font-size: 15px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--navy);
+           background: #fff; color: var(--navy); cursor: pointer; }
+  button:hover:not(:disabled) { background: #e6ecf8; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--navy); color: #fff; }
+  button.primary:hover:not(:disabled) { background: var(--navy2); }
+  button.small { padding: 4px 10px; font-size: 14px; }
+  label { font-size: 14px; }
+  input[type=text] { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; width: 260px; }
+  select { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; }
+  .viz { padding-bottom: 6px; }
+  .stage { display: flex; align-items: flex-end; justify-content: center; gap: 6px; height: clamp(150px, 25vh, 230px); padding-top: 4px; }
+  .colm { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 1 0; max-width: 72px; min-width: 0; }
+  .tag { height: 20px; font-size: 14px; font-weight: bold; color: var(--navy); }
+  .bar { width: 100%; border-radius: 5px 5px 0 0; display: flex; align-items: flex-start; justify-content: center;
+         color: #fff; font-weight: bold; font-size: 17px; padding-top: 4px; background: var(--plain); border: 3px solid transparent; }
+  .bar.range { background: var(--range); color: var(--ink); }
+  .bar.piece { background: var(--piece); color: var(--ink); }
+  .bar.left { background: var(--left); }
+  .bar.right { background: var(--right); }
+  .bar.used { opacity: .3; border: 3px dashed #55627a; }
+  .bar.cmp { border-color: var(--cmp); box-shadow: 0 0 0 3px rgba(242,177,52,.45); }
+  .bar.final { background: var(--final); color: #fff; }
+  .bar.faded { opacity: .45; }
+  .idx { font-size: 12px; color: #6b768a; height: 16px; }
+  .rng { height: 5px; width: 100%; background: transparent; margin-bottom: 4px; }
+  .rng.on { background: var(--navy); }
+  .rowlabel { font-size: 12px; color: #6b768a; text-align: left; margin: 4px 0 2px; }
+  .tmprow { display: flex; justify-content: center; gap: 6px; }
+  .slot { flex: 1 1 0; max-width: 72px; min-width: 0; height: 34px; border: 2px dashed #b6c1d6; border-radius: 5px;
+          display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px; color: #8a97ad; }
+  .slot.full { border-style: solid; border-color: #55627a; color: var(--ink); background: #eef2f9; }
+  .slot.take { border-color: var(--take); background: #dff3e5; box-shadow: 0 0 0 3px rgba(58,163,91,.35); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: #4a5568; margin-top: 6px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .status { font-size: clamp(16px, 1.45vw, 21px); line-height: 1.35; min-height: 3.1em; }
+  .stack { font-family: Consolas, Menlo, monospace; font-size: 13px; color: #4a5568; margin-top: 4px; min-height: 1.3em; }
+  .counters { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ctr { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; text-align: center; min-width: 82px; }
+  .ctr b { display: block; font-size: 22px; color: var(--navy); }
+  .ctr span { font-size: 12px; color: #6b768a; }
+  .ctr.hot { background: #fff3c4; }
+  .tree { position: relative; height: 130px; margin-top: 4px; }
+  .node { position: absolute; height: 22px; padding: 0 2px; }
+  .node div { height: 100%; border: 1px solid #b6c1d6; border-radius: 4px; background: #f0f3f9; font-size: 11px; line-height: 20px;
+              text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #6b768a; }
+  .node.active div { border: 2px solid var(--cmp); background: #fff3c4; color: var(--ink); line-height: 18px; }
+  .node.sorted div { background: #dff3e5; border-color: #3AA35B; color: var(--ink); }
+  .code { font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+  .code div[data-head] { font-weight: bold; color: var(--navy); margin-top: 2px; }
+  .code div { padding: 0 6px; border-left: 4px solid transparent; }
+  .code div.on { background: #fff3c4; border-left-color: var(--cmp); }
+  .note { font-size: 12px; color: #6b768a; margin-top: 4px; }
+  h2 { font-size: 14px; margin: 0 0 6px; color: var(--navy); text-transform: uppercase; letter-spacing: .5px; }
+  .logcard { flex: 1 1 140px !important; min-height: 140px; display: flex; flex-direction: column; }
+  #log { overflow-y: auto; flex: 1; font-size: 13px; }
+  #log div { padding: 1px 4px; border-bottom: 1px solid #eef1f7; }
+  #log div.cur { background: #fff3c4; }
+  .err { color: #b3261e; font-size: 14px; min-height: 1.2em; }
+  .hint { font-size: 12px; color: #6b768a; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>CSC 2180 Data Structures</h1>
+  <span>Day 37 | Merge Sort Demo</span>
+</header>
+<main>
+  <div class="col">
+    <div class="card viz">
+      <div class="stage" id="stage"></div>
+      <div class="rowlabel">scratch array: each merge writes its output here, then copies it back</div>
+      <div class="tmprow" id="tmprow"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card">
+      <div class="status" id="status"></div>
+      <div class="stack" id="stack"></div>
+    </div>
+    <div class="row">
+      <button id="back">&#9664; Back</button>
+      <button id="step" class="primary">Step &#9654;</button>
+      <button id="play">Play</button>
+      <button id="end">Run to end</button>
+      <button id="reset">Reset</button>
+      <label>Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+      <span class="hint" id="pos"></span>
+    </div>
+    <div class="counters" id="counters"></div>
+    <div class="card">
+      <div class="row">
+        <label for="arr">Array (2 to 16 items):</label>
+        <input type="text" id="arr" value="5 2 4 6 1 3" spellcheck="false">
+        <button id="load" class="small">Load</button>
+        <span class="err" id="err"></span>
+      </div>
+      <div class="row" style="margin-top:8px" id="presets"></div>
+      <div class="row" style="margin-top:8px">
+        <label>Tie rule
+          <select id="ties">
+            <option value="lt">strictly smaller (ties go left, stable)</option>
+            <option value="le">smaller or equal (ties go right, breaks stability)</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="skip"> Skip the merge when the halves are already in order (Lab 37 stretch)</label>
+      </div>
+      <div class="hint" style="margin-top:6px">Tokens may carry a letter, such as <code>2a 2b 1</code>. Only the number is compared, so you can watch whether equal items keep their order.</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <h2>Recursion tree (each box is one call to sort a range)</h2>
+      <div class="tree" id="tree"></div>
+      <div class="note">Gray: not called yet. Yellow: running. Green: sorted, showing its items.</div>
+    </div>
+    <div class="card">
+      <h2>The steps in plain English</h2>
+      <div class="code" id="code"></div>
+      <div class="note">Lab 37 also counts copies: every item written into the scratch array, and every item written back.</div>
+    </div>
+    <div class="card logcard">
+      <h2>Log</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------------- code panel ----------------
+  function codeLines(o) {
+    var L = [], n = 0;
+    L.push({ id: "h1", t: "SORT A RANGE (from the first position up to, but not including, the end)", head: 1 });
+    L.push({ id: "calls", t: (++n) + ". Count this call." });
+    L.push({ id: "base", t: (++n) + ". If the range has zero or one item, it is already sorted. Stop." });
+    L.push({ id: "mid", t: (++n) + ". Find the middle. The left half gets the first half of the items, rounded down; the right half gets the rest." });
+    L.push({ id: "recL", t: (++n) + ". Sort the left half, using these same steps." });
+    L.push({ id: "recR", t: (++n) + ". Sort the right half, using these same steps." });
+    if (o.skip) L.push({ id: "skip", t: (++n) + ". Check the last item of the left half against the first item of the right half. If the right one is not smaller, the halves are already in order. Stop." });
+    L.push({ id: "merge", t: (++n) + ". Merge the two sorted halves." });
+    L.push({ t: "" });
+    L.push({ id: "h2", t: "MERGE TWO SORTED NEIGHBORING PIECES", head: 1 });
+    L.push({ id: "init", t: "1. Put one finger at the front of the left piece and one at the front of the right piece. Empty the scratch array." });
+    L.push({ id: "while", t: "2. While both pieces still have items:" });
+    L.push({ id: "cmp", t: "     a. Count one comparison, between the two front items." });
+    if (o.ties === "lt") {
+      L.push({ id: "test", t: "     b. Is the right front STRICTLY smaller than the left front? (A tie counts as no.)" });
+      L.push({ id: "takeR", t: "          Yes: copy the right front into the scratch array and move the right finger." });
+      L.push({ id: "takeL", t: "          No: copy the left front into the scratch array and move the left finger." });
+    } else {
+      L.push({ id: "test", t: "     b. Is the right front smaller than OR EQUAL to the left front? (BUG: a tie goes right.)" });
+      L.push({ id: "takeR", t: "          Yes: copy the right front into the scratch array and move the right finger." });
+      L.push({ id: "takeL", t: "          No: copy the left front into the scratch array and move the left finger." });
+    }
+    L.push({ id: "lo1", t: "3. If the right piece ran out, copy what is left of the left piece. No comparisons are made." });
+    L.push({ id: "lo2", t: "    If the left piece ran out, copy what is left of the right piece. No comparisons are made." });
+    L.push({ id: "back", t: "4. Copy the scratch array back over the range. The range is now sorted." });
+    return L;
+  }
+
+  // ---------------- engine: record every step ----------------
+  function plan(n) { // preorder list of calls, same order as the recursion
+    var info = [];
+    (function go(lo, hi, depth) {
+      var id = info.length;
+      info.push({ lo: lo, hi: hi, depth: depth });
+      if (hi - lo >= 2) {
+        var mid = lo + Math.floor((hi - lo) / 2);
+        go(lo, mid, depth + 1);
+        go(mid, hi, depth + 1);
+      }
+    })(0, n, 0);
+    return info;
+  }
+
+  function brute(items) {
+    var inv = 0;
+    for (var i = 0; i < items.length; i++)
+      for (var j = i + 1; j < items.length; j++)
+        if (items[j].key < items[i].key) inv++;
+    return inv;
+  }
+
+  function build(items, o) {
+    var n = items.length;
+    var arr = items.slice(), tmp = [], i;
+    for (i = 0; i < n; i++) tmp.push(null);
+    var c = { cmp: 0, cop: 0, calls: 0, inv: 0 };
+    var info = plan(n), st = [], text = [], nextId = 0, stack = [], pieces = [], steps = [];
+    for (i = 0; i < info.length; i++) { st.push(0); text.push(items.slice(info[i].lo, info[i].hi).map(function (x) { return x.label; }).join(" ")); }
+
+    function rangeText(lo, hi) { return arr.slice(lo, hi).map(function (x) { return x.label; }).join(", "); }
+    function snap(f) {
+      var s = {
+        arr: arr.slice(), tmp: tmp.slice(), c: { cmp: c.cmp, cop: c.cop, calls: c.calls, inv: c.inv },
+        stack: stack.map(function (id) { return "range " + info[id].lo + " up to " + info[id].hi; }),
+        st: st.slice(), text: text.slice(), pieces: pieces.map(function (p) { return p.slice(); }),
+        lines: [], cmpIdx: [], taken: -1, range: null, merge: null, done: false, log: ""
+      };
+      for (var k in f) s[k] = f[k];
+      steps.push(s);
+    }
+    function setPiece(lo, hi) {
+      pieces = pieces.filter(function (p) { return !(p[0] >= lo && p[1] <= hi); });
+      pieces.push([lo, hi]);
+    }
+
+    snap({ log: "Start. The array has " + n + " items and the scratch array has " + n + " empty slots. Step to begin sorting the range from 0 up to " + n + "." });
+
+    function mergeRanges(lo, mid, hi, id) {
+      var L = lo, R = mid, out = lo, k;
+      for (k = 0; k < n; k++) tmp[k] = null;
+      snap({ lines: ["merge", "h2", "init"], range: [lo, hi], merge: { lo: lo, mid: mid, hi: hi, L: L, R: R },
+        log: "Merge: left piece [" + rangeText(lo, mid) + "] and right piece [" + rangeText(mid, hi) + "]. Both are already sorted, so only the two fronts ever need comparing." });
+      while (L < mid && R < hi) {
+        c.cmp++;
+        var a = arr[L], b = arr[R];
+        var takeR = o.ties === "lt" ? b.key < a.key : b.key <= a.key;
+        var cmpIdx = [L, R], msg;
+        if (takeR) {
+          tmp[out] = b; c.cop++;
+          var add = mid - L;
+          c.inv += add;
+          msg = "Compare: is the right front " + b.label + (o.ties === "lt" ? " smaller than " : " smaller than or equal to ") + "the left front " + a.label + "? Yes: take " + b.label + " from the right. " +
+                add + " item" + (add === 1 ? " is" : "s are") + " still waiting in the left piece, so +" + add + " inversion" + (add === 1 ? "" : "s") + ".";
+          if (o.ties === "le" && b.key === a.key) msg = "Compare: is " + b.label + " smaller than or equal to " + a.label + "? Yes, because they are equal: take " + b.label + " from the right. The tie went right, so equal items have swapped places. (+" + add + " inversions counted, which wrongly includes the tie.)";
+          R++;
+        } else {
+          tmp[out] = a; c.cop++;
+          msg = "Compare: is the right front " + b.label + (o.ties === "lt" ? " smaller than " : " smaller than or equal to ") + "the left front " + a.label + "? No: take " + a.label + " from the left." +
+                (a.key === b.key ? " They are equal, and a tie goes to the left item, which keeps the sort stable." : "");
+          L++;
+        }
+        snap({ lines: ["while", "cmp", "test", takeR ? "takeR" : "else", takeR ? "takeR" : "takeL"], cmpIdx: cmpIdx, taken: out,
+          range: [lo, hi], merge: { lo: lo, mid: mid, hi: hi, L: L, R: R }, log: msg });
+        out++;
+      }
+      while (L < mid) {
+        tmp[out] = arr[L]; c.cop++;
+        snap({ lines: ["lo1"], taken: out, range: [lo, hi], merge: { lo: lo, mid: mid, hi: hi, L: L + 1, R: R },
+          log: "The right piece has run out. Copy the leftover " + arr[L].label + " from the left piece. No comparison is made." });
+        L++; out++;
+      }
+      while (R < hi) {
+        tmp[out] = arr[R]; c.cop++;
+        snap({ lines: ["lo2"], taken: out, range: [lo, hi], merge: { lo: lo, mid: mid, hi: hi, L: L, R: R + 1 },
+          log: "The left piece has run out. Copy the leftover " + arr[R].label + " from the right piece. No comparison is made." });
+        R++; out++;
+      }
+      for (k = lo; k < hi; k++) arr[k] = tmp[k];
+      c.cop += hi - lo;
+      st[id] = 2; text[id] = rangeText(lo, hi).replace(/, /g, " ");
+      setPiece(lo, hi);
+      snap({ lines: ["back"], range: [lo, hi], merge: { lo: lo, mid: mid, hi: hi, L: mid, R: hi }, justMerged: [lo, hi],
+        log: "Copy the scratch array back over positions " + lo + " to " + (hi - 1) + ": " + (hi - lo) + " more copies. This range is now sorted: " + rangeText(lo, hi) + "." });
+    }
+
+    function sortRange(lo, hi) {
+      var id = nextId++;
+      c.calls++; stack.push(id); st[id] = 1;
+      snap({ lines: ["h1", "calls"], range: [lo, hi], log: "Sort the range " + lo + " up to " + hi + ": call number " + c.calls + ". The range holds " + (hi - lo) + " item" + (hi - lo === 1 ? "" : "s") + "." });
+      if (hi - lo < 2) {
+        st[id] = 2; text[id] = hi - lo === 1 ? arr[lo].label : "";
+        if (hi - lo === 1) setPiece(lo, hi);
+        snap({ lines: ["base"], range: [lo, hi], log: "Zero or one item: already sorted, so this call stops at once. The base case stops at ONE item, not zero." });
+        stack.pop();
+        return;
+      }
+      var mid = lo + Math.floor((hi - lo) / 2);
+      snap({ lines: ["mid"], range: [lo, hi], log: "The middle is position " + mid + ". The left half gets " + (mid - lo) + " item" + (mid - lo === 1 ? "" : "s") + ", the right half gets " + (hi - mid) + "." });
+      snap({ lines: ["recL"], range: [lo, hi], log: "Sort the left half, positions " + lo + " to " + (mid - 1) + ". The merge cannot start until BOTH halves are sorted." });
+      sortRange(lo, mid);
+      snap({ lines: ["recR"], range: [lo, hi], log: "The left half is done. Now sort the right half, positions " + mid + " to " + (hi - 1) + "." });
+      sortRange(mid, hi);
+      if (o.skip) {
+        c.cmp++;
+        var ordered = !(arr[mid].key < arr[mid - 1].key);
+        if (ordered) {
+          st[id] = 2; text[id] = rangeText(lo, hi).replace(/, /g, " ");
+          setPiece(lo, hi);
+          snap({ lines: ["skip"], cmpIdx: [mid - 1, mid], range: [lo, hi],
+            log: "Check: is " + arr[mid].label + " smaller than " + arr[mid - 1].label + "? No, so the halves are already in order. Skip the merge: 1 comparison, 0 copies." });
+          stack.pop();
+          return;
+        }
+        snap({ lines: ["skip"], cmpIdx: [mid - 1, mid], range: [lo, hi],
+          log: "Check: is " + arr[mid].label + " smaller than " + arr[mid - 1].label + "? Yes, so the halves overlap and the merge is needed. The check cost 1 extra comparison." });
+      }
+      mergeRanges(lo, mid, hi, id);
+      stack.pop();
+    }
+
+    sortRange(0, n);
+    var total = brute(items);
+    snap({ done: true, log: "Sorted: " + rangeText(0, n) + ". " + c.cmp + " comparisons, " + c.cop + " copies, " + c.calls + " calls. The merges found " + c.inv + " inversions; checking every pair gives " + total + "." });
+    return { steps: steps, inversions: total, info: info };
+  }
+
+  // ---------------- UI ----------------
+  var items = [], res = null, cur = 0, timer = null, opts = { ties: "lt", skip: false };
+
+  function parse(text) {
+    var toks = text.trim().split(/[\s,]+/).filter(function (t) { return t !== ""; });
+    if (toks.length < 2 || toks.length > 16) return { err: "Enter 2 to 16 items." };
+    var out = [];
+    for (var i = 0; i < toks.length; i++) {
+      var m = /^(\d{1,3})([a-zA-Z]?)$/.exec(toks[i]);
+      if (!m) return { err: "Items look like 5 or 2a (a number, then an optional letter)." };
+      out.push({ key: parseInt(m[1], 10), label: toks[i] });
+    }
+    return { items: out };
+  }
+
+  function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function ctr(v, label, hot) { return '<div class="ctr' + (hot ? " hot" : "") + '"><b>' + v + "</b><span>" + label + "</span></div>"; }
+
+  function renderLegend() {
+    var lg = [["left", "left piece"], ["right", "right piece"], ["range", "current call, not merging"], ["piece", "sorted piece"], ["cmp", "just compared"], ["used", "already taken into tmp"]];
+    var col = { left: "var(--left)", right: "var(--right)", range: "var(--range)", piece: "var(--piece)", cmp: "var(--cmp)", used: "#d5d9e2" };
+    $("legend").innerHTML = lg.map(function (x) { return '<span><i style="background:' + col[x[0]] + '"></i>' + x[1] + "</span>"; }).join("");
+  }
+
+  function renderCode() {
+    var lines = codeLines(opts);
+    $("code").innerHTML = lines.map(function (l) { return '<div data-id="' + (l.id || "") + '"' + (l.head ? ' data-head="1"' : "") + ">" + (escapeHtml(l.t) || " ") + "</div>"; }).join("");
+  }
+
+  function render() {
+    var s = res.steps[cur], n = s.arr.length;
+    var maxKey = Math.max.apply(null, items.map(function (x) { return x.key; })) || 1;
+    var avail = Math.max(110, $("stage").clientHeight - 70);
+    var html = "", t = "", i;
+    for (i = 0; i < n; i++) {
+      var it = s.arr[i], cls = "bar", tag = "";
+      var inRange = s.range && i >= s.range[0] && i < s.range[1];
+      if (s.done) cls += " final";
+      else if (s.merge && inRange) {
+        var m = s.merge;
+        if (i < m.mid) { cls += " left"; if (i < m.L) cls += " used"; }
+        else { cls += " right"; if (i < m.R) cls += " used"; }
+        if (s.justMerged) cls = "bar piece";
+        if (i === m.L && m.L < m.mid) tag = "L";
+        if (i === m.R && m.R < m.hi) tag = "R";
+      } else if (inRange) cls += " range";
+      else {
+        var inPiece = s.pieces.some(function (p) { return i >= p[0] && i < p[1]; });
+        cls += inPiece ? " piece" : "";
+        if (s.range) cls += " faded";
+      }
+      if (s.cmpIdx.indexOf(i) >= 0) cls += " cmp";
+      var h = Math.max(40, Math.round(it.key / maxKey * avail));
+      html += '<div class="colm"><div class="tag">' + tag + '</div><div class="' + cls + '" style="height:' + h + 'px">' + it.label +
+              '</div><div class="rng' + (inRange ? " on" : "") + '"></div><div class="idx">' + i + "</div></div>";
+      var sl = s.tmp[i];
+      t += '<div class="slot' + (sl ? " full" : "") + (s.taken === i ? " take" : "") + '">' + (sl ? sl.label : "") + "</div>";
+    }
+    $("stage").innerHTML = html;
+    $("tmprow").innerHTML = t;
+    $("status").innerHTML = escapeHtml(s.log).replace(/^(Start|Sort the range \d+ up to \d+|The middle is position \d+|Compare [^?]*\?|Check:[^?]*\?|Merge|Copy the scratch array back|Zero or one item|The right piece has run out|The left piece has run out|The left half is done|Sort the left half|Sorted)/, "<b>$1</b>");
+    $("stack").textContent = s.stack.length ? "calls running: " + s.stack.join(" > ") : (s.done ? "calls running: none" : "");
+    $("counters").innerHTML =
+      ctr(s.c.cmp, "Comparisons") + ctr(s.c.cop, "Copies") + ctr(s.c.calls, "Calls") + ctr(s.c.inv, "Inversions found", s.done) +
+      ctr(res.inversions, "Inversions (all pairs)") + ctr((n * Math.log(n) / Math.LN2).toFixed(1), "n log2 n");
+    // tree
+    var th = "", info = res.info, maxDepth = 0;
+    info.forEach(function (nd) { if (nd.depth > maxDepth) maxDepth = nd.depth; });
+    $("tree").style.height = ((maxDepth + 1) * 26 + 4) + "px";
+    info.forEach(function (nd, id) {
+      var cl = "node" + (s.st[id] === 1 ? " active" : s.st[id] === 2 ? " sorted" : "");
+      th += '<div class="' + cl + '" style="left:' + (nd.lo / n * 100) + "%;width:" + ((nd.hi - nd.lo) / n * 100) + "%;top:" + (nd.depth * 26) + 'px"><div>' + escapeHtml(s.text[id]) + "</div></div>";
+    });
+    $("tree").innerHTML = th;
+    // code
+    var onSet = {};
+    s.lines.forEach(function (x) { onSet[x] = true; });
+    Array.prototype.forEach.call($("code").children, function (d) { d.className = (onSet[d.getAttribute("data-id")] ? "on" : "") + (d.getAttribute("data-head") ? "" : ""); });
+    // log
+    var lh = "";
+    for (var k = 0; k <= cur; k++) lh += '<div class="' + (k === cur ? "cur" : "") + '">' + k + ". " + escapeHtml(res.steps[k].log) + "</div>";
+    $("log").innerHTML = lh;
+    $("log").scrollTop = $("log").scrollHeight;
+    $("pos").textContent = "step " + cur + " of " + (res.steps.length - 1);
+    $("back").disabled = cur === 0;
+    $("step").disabled = cur >= res.steps.length - 1;
+    $("end").disabled = cur >= res.steps.length - 1;
+  }
+
+  function stop() { if (timer) { clearInterval(timer); timer = null; } $("play").textContent = "Play"; }
+  function load(arrItems) {
+    stop();
+    items = arrItems;
+    opts.ties = $("ties").value;
+    opts.skip = $("skip").checked;
+    res = build(items, opts);
+    cur = 0;
+    renderCode();
+    render();
+  }
+  function stepFwd() { if (cur < res.steps.length - 1) { cur++; render(); } else stop(); }
+  function stepBack() { stop(); if (cur > 0) { cur--; render(); } }
+  function delay() { return 1100 - $("speed").value * 100; }
+  function play() {
+    if (timer) { stop(); return; }
+    if (cur >= res.steps.length - 1) { cur = 0; render(); }
+    $("play").textContent = "Pause";
+    timer = setInterval(stepFwd, delay());
+  }
+
+  $("step").onclick = function () { stop(); stepFwd(); };
+  $("back").onclick = stepBack;
+  $("play").onclick = play;
+  $("end").onclick = function () { stop(); cur = res.steps.length - 1; render(); };
+  $("reset").onclick = function () { stop(); cur = 0; render(); };
+  $("speed").oninput = function () { if (timer) { stop(); play(); } };
+  $("ties").onchange = $("skip").onchange = function () { var p = parse($("arr").value); if (p.items) load(p.items); };
+  $("load").onclick = function () {
+    var p = parse($("arr").value);
+    $("err").textContent = p.err || "";
+    if (p.items) load(p.items);
+  };
+  $("arr").onkeydown = function (e) { if (e.key === "Enter") $("load").onclick(); e.stopPropagation(); };
+  document.onkeydown = function (e) {
+    if (e.target && e.target.tagName === "INPUT" && e.target.type === "text") return;
+    if (e.key === "ArrowRight") { stop(); stepFwd(); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { stepBack(); e.preventDefault(); }
+    else if (e.key === " ") { play(); e.preventDefault(); }
+  };
+
+  var presets = [
+    ["Tutorial: 5 2 4 6 1 3", "5 2 4 6 1 3"],
+    ["3 1 2 5 4", "3 1 2 5 4"],
+    ["Ties: 2a 2b 1", "2a 2b 1"],
+    ["Sorted 8", "1 2 3 4 5 6 7 8"],
+    ["Worst case 8", "5 1 7 3 6 2 8 4"],
+    ["Reversed 8", "8 7 6 5 4 3 2 1"],
+    ["Random 16", "38 27 43 3 9 82 10 31 7 64 15 90 22 5 71 48"],
+    ["4 3 2 1", "4 3 2 1"]
+  ];
+  $("presets").innerHTML = presets.map(function (p, i) { return '<button class="small" data-i="' + i + '">' + p[0] + "</button>"; }).join("");
+  Array.prototype.forEach.call($("presets").children, function (b) {
+    b.onclick = function () { var p = presets[+b.getAttribute("data-i")]; $("arr").value = p[1]; $("err").textContent = ""; load(parse(p[1]).items); };
+  });
+
+  window.__mergeDemo = { build: build, parse: parse };  // for testing
+  renderLegend();
+  load(parse($("arr").value).items);
+})();
+</script>
+</body>
+</html>
